@@ -89,7 +89,7 @@ module.exports = [
             ]
         },
         output: {
-            path: path.resolve(__dirname, 'playground'),
+            path: path.resolve(__dirname, 'refactor-playground'),
             filename: '[name].js'
         },
         module: {
@@ -135,7 +135,7 @@ module.exports = [
             }, {
                 from: 'node_modules/scratch-render/dist/web'
             }, {
-                from: 'src/playground'
+                from: 'src/refactor-playground'
             }])
         ])
     })
