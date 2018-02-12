@@ -17,6 +17,6 @@ npm-*
 /dist
 /playground
 /benchmark
-
+/refactor-playground
 # Localization
 /translations
