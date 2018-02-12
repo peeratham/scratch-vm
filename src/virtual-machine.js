@@ -738,6 +738,15 @@ class VirtualMachine extends EventEmitter {
 
                 e['blocks'] = {xml: xmlString};
                 
+                // for multi-sprite context  (if needed)
+                // this.runtime.targets.forEach(
+                //     function(target) {
+                //         targets[target.getName()] = target.blocks.toXML();
+                //     }
+                // );
+
+                e['targets'] =  targets;
+                console.log(e);
                 this.remoteMsg.sendEvent(e);
             }
 
