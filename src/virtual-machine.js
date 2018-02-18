@@ -16,6 +16,8 @@ const {loadSound} = require('./import/load-sound.js');
 
 const RESERVED_NAMES = ['_mouse_', '_stage_', '_edge_', '_myself_', '_random_'];
 
+const RemoteMsg = require('./util/remote-msg');
+
 /**
  * Handles connections between blocks, stage, and extensions.
  * @constructor
@@ -39,6 +41,8 @@ class VirtualMachine extends EventEmitter {
          * @type {Target}
          */
         this.editingTarget = null;
+
+        this.remoteMsg = new RemoteMsg();
 
         /**
          * The currently dragging target, for redirecting IO data.
@@ -591,6 +595,37 @@ class VirtualMachine extends EventEmitter {
      * @param {!Blockly.Event} e Any Blockly event.
      */
     blockListener (e) {
+        if (['extract_var'].indexOf(e.type) !== -1) {
+            // augmenting relevant info in the event
+            // just add the xml representation of the current workspace for now
+            if(this.editingTarget){
+                // xml?
+                
+                // e['blocks'] = this.editingTarget.blocks.toXML();
+
+
+                // assembling target code
+                const variableMap = Object.assign({},
+                    this.runtime.getTargetForStage().variables,
+                    this.editingTarget.variables
+                );
+
+                const variables = Object.keys(variableMap).map(k => variableMap[k]);
+
+                const xmlString = `<xml xmlns="http://www.w3.org/1999/xhtml">
+                                    <variables>
+                                        ${variables.map(v => v.toXML()).join()}
+                                    </variables>
+                                    ${this.editingTarget.blocks.toXML()}
+                                </xml>`;
+
+                e['blocks'] = {xml: xmlString};
+                
+                this.remoteMsg.sendEvent(e);
+            }
+
+        }
+        
         if (this.editingTarget) {
             this.editingTarget.blocks.blocklyListen(e, this.runtime);
         }
