@@ -5,13 +5,19 @@ class RemoteMsg {
 		this.socket = new SockJS('http://localhost:8080/service-endpoint');
 		this.stompClient = Stomp.over(this.socket);
 		this.stompClient.debug = null;
-		this.stompClient.connect({}, function (frame) {
-        	console.log('Connected to the refactoring endpoint');
-     		
-        	this.subscribe('/user/queue/request', function (serverMsg) {
-        		console.log(JSON.parse(serverMsg.body).type);
-        	});
-    	});		
+  		this.stompClient.connect({}, function (frame) {
+  				this.receiveEvent(frame);
+  			}.bind(this)
+  		);
+	}
+
+	receiveEvent(frame) {
+		console.log('Connected to the refactoring endpoint');
+		
+		this.stompClient.subscribe('/user/queue/request', function (serverMsg) {
+			console.log(JSON.parse(serverMsg.body).type);
+		});
+
 	}
 
 	sendEvent(event) {
