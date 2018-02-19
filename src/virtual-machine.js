@@ -46,7 +46,7 @@ class VirtualMachine extends EventEmitter {
          */
         this.editingTarget = null;
 
-        this.remoteMsg = new RemoteMsg();
+        this.remoteMsg = new RemoteMsg(this);
 
         /**
          * The currently dragging target, for redirecting IO data.

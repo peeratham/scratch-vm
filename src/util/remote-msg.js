@@ -2,6 +2,8 @@ const SockJS = require('./sockjs.min.js');
 const Stomp = require('./stomp.min.js').Stomp;
 
 class RemoteMsg {
+	constructor(vm) {
+		this.vm = vm;
 		this.socket = new SockJS('http://localhost:8080/service-endpoint');
 		this.stompClient = Stomp.over(this.socket);
 		this.stompClient.debug = null;
@@ -19,7 +21,8 @@ class RemoteMsg {
 	}
 
 	receiveMessage(serverMsg) {
-		console.log(JSON.parse(serverMsg.body).type);
+		const msg = JSON.parse(serverMsg.body);
+		this.vm.emit('BLOCK_TRANSFORM', {type: msg.type});
 	}
 
 	sendEvent(event) {
