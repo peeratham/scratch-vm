@@ -22,7 +22,8 @@ class RemoteMsg {
 
 	receiveMessage(serverMsg) {
 		const msg = JSON.parse(serverMsg.body);
-		this.vm.emit('BLOCK_TRANSFORM', {type: msg.type});
+		this.vm.emit('BLOCK_TRANSFORM', {type: msg.type, body: msg.body});
+		// todo: packing complete data
 	}
 
 	sendEvent(event) {
