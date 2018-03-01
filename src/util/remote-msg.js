@@ -28,14 +28,11 @@ class RemoteMsg {
 
 	sendEvent(event) {
 		let message = {};
-		message['type'] = 'invocation';
-		message['body'] = 'body data'
-		message['invocation'] = {
-        	'blocks': event['blocks']["xml"],
-        	'blockId' : event['blockId'],
-        	'refactoring' : event['type']
-        };
+        let request = {"refactoring": event['type'], "targetBlockExpId": event['blockId']};
+    	let body = {"request":request, "targets":event["targets"]};
+        message['body'] = body; //JSON.stringify(msgBody)
 
+        console.log(JSON.stringify(message));
 		this.stompClient.send("/app/request", {}, JSON.stringify(message));
 	}
 
