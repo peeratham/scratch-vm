@@ -23,14 +23,14 @@ class RemoteMsg {
 	receiveMessage(serverMsg) {
 		const msg = JSON.parse(serverMsg.body);
 		this.vm.emit('BLOCK_TRANSFORM', {type: msg.type, body: msg.body});
-		// todo: packing complete data
 	}
 
 	sendEvent(event) {
 		let message = {};
+        message['type'] = "invocation";
         let request = {"refactoring": event['type'], "targetBlockExpId": event['blockId']};
     	let body = {"request":request, "targets":event["targets"]};
-        message['body'] = body; //JSON.stringify(msgBody)
+        message['body'] = JSON.stringify(body);
 
         console.log(JSON.stringify(message));
 		this.stompClient.send("/app/request", {}, JSON.stringify(message));
