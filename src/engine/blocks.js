@@ -288,6 +288,22 @@ class Blocks {
                 newCoordinate: e.newCoordinate
             });
             break;
+        case 'dragOutside':
+            if (optRuntime) {
+                optRuntime.emitBlockDragUpdate(e.isOutside);
+            }
+            break;
+        case 'endDrag':
+            if (optRuntime) {
+                optRuntime.emitBlockDragUpdate(false /* areBlocksOverGui */);
+
+                // Drag blocks onto another sprite
+                if (e.isOutside) {
+                    const newBlocks = adapter(e);
+                    optRuntime.emitBlockEndDrag(newBlocks);
+                }
+            }
+            break;
         case 'delete':
             // Don't accept delete events for missing blocks,
             // or shadow blocks being obscured.
@@ -573,6 +589,21 @@ class Blocks {
                 if (varId === currFieldId) {
                     varOrListField.value = newName;
                 }
+            }
+        }
+    }
+
+    /**
+     * Keep blocks up to date after they are shared between targets.
+     * @param {boolean} isStage If the new target is a stage.
+     */
+    updateTargetSpecificBlocks (isStage) {
+        const blocks = this._blocks;
+        for (const blockId in blocks) {
+            if (isStage && blocks[blockId].opcode === 'event_whenthisspriteclicked') {
+                blocks[blockId].opcode = 'event_whenstageclicked';
+            } else if (!isStage && blocks[blockId].opcode === 'event_whenstageclicked') {
+                blocks[blockId].opcode = 'event_whenthisspriteclicked';
             }
         }
     }
