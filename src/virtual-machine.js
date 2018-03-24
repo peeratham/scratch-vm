@@ -712,7 +712,7 @@ class VirtualMachine extends EventEmitter {
      * @param {!Blockly.Event} e Any Blockly event.
      */
     blockListener (e) {
-        if (['extract_var'].indexOf(e.type) !== -1) {
+        if (['extract_var','extract_procedure'].indexOf(e.type) !== -1) {
             // augmenting relevant info in the event
             // just add the xml representation of the current workspace for now
             if(this.editingTarget){
