@@ -1,11 +1,12 @@
 const SockJS = require('./sockjs.min.js');
-const Stomp = require('./stomp.min.js').Stomp;
+const Stomp = require('./stomp.js').Stomp;
 
 class RemoteMsg {
 	constructor(vm) {
 		this.vm = vm;
-		this.socket = new SockJS('http://localhost:8080/service-endpoint');
-		this.stompClient = Stomp.over(this.socket);
+		// this.socket = new SockJS('http://localhost:8080/service-endpoint');
+		// this.stompClient = Stomp.over(this.socket);
+		this.stompClient = Stomp.client('ws://localhost:8080/service-endpoint');
 		this.stompClient.debug = null;
   		
   		this.stompClient.connect({}, function (frame) {
