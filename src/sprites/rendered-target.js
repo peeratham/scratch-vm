@@ -140,9 +140,17 @@ class RenderedTarget extends Target {
         /**
          * The state of the video input (used by extensions with camera input).
          * This property is global to the project and stored in the stage.
+         *
+         * Defaults to ON. This setting does not turn the video by itself. A
+         * video extension once loaded will set the video device to this
+         * setting. Set to ON when a video extension is added in the editor the
+         * video will start ON. If the extension is loaded as part of loading a
+         * saved project the extension will see the value set when the stage
+         * was loaded from the saved values including the video state.
+         *
          * @type {string}
          */
-        this.videoState = RenderedTarget.VIDEO_STATE.OFF;
+        this.videoState = RenderedTarget.VIDEO_STATE.ON;
     }
 
     /**
@@ -186,6 +194,14 @@ class RenderedTarget extends Target {
     }
 
     /**
+     * Event which fires when a target changes visually, for updating say bubbles.
+     * @type {string}
+     */
+    static get EVENT_TARGET_VISUAL_CHANGE () {
+        return 'EVENT_TARGET_VISUAL_CHANGE';
+    }
+
+    /**
      * Rotation style for "all around"/spinning.
      * @type {string}
      */
@@ -211,13 +227,13 @@ class RenderedTarget extends Target {
 
     /**
      * Available states for video input.
-     * @type {object}
+     * @enum {string}
      */
     static get VIDEO_STATE () {
         return {
-            'OFF': 'off',
-            'ON': 'on',
-            'ON-FLIPPED': 'on-flipped'
+            OFF: 'off',
+            ON: 'on',
+            ON_FLIPPED: 'on-flipped'
         };
     }
 
@@ -241,6 +257,7 @@ class RenderedTarget extends Target {
                 position: position
             });
             if (this.visible) {
+                this.emit(RenderedTarget.EVENT_TARGET_VISUAL_CHANGE, this);
                 this.runtime.requestRedraw();
             }
         } else {
@@ -291,6 +308,7 @@ class RenderedTarget extends Target {
                 scale: renderedDirectionScale.scale
             });
             if (this.visible) {
+                this.emit(RenderedTarget.EVENT_TARGET_VISUAL_CHANGE, this);
                 this.runtime.requestRedraw();
             }
         }
@@ -338,6 +356,7 @@ class RenderedTarget extends Target {
                 visible: this.visible
             });
             if (this.visible) {
+                this.emit(RenderedTarget.EVENT_TARGET_VISUAL_CHANGE, this);
                 this.runtime.requestRedraw();
             }
         }
@@ -355,7 +374,7 @@ class RenderedTarget extends Target {
         if (this.renderer) {
             // Clamp to scales relative to costume and stage size.
             // See original ScratchSprite.as:setSize.
-            const costumeSize = this.renderer.getSkinSize(this.drawableID);
+            const costumeSize = this.renderer.getCurrentSkinSize(this.drawableID);
             const origW = costumeSize[0];
             const origH = costumeSize[1];
             const minScale = Math.min(1, Math.max(5 / origW, 5 / origH));
@@ -370,6 +389,7 @@ class RenderedTarget extends Target {
                 scale: renderedDirectionScale.scale
             });
             if (this.visible) {
+                this.emit(RenderedTarget.EVENT_TARGET_VISUAL_CHANGE, this);
                 this.runtime.requestRedraw();
             }
         }
@@ -389,6 +409,7 @@ class RenderedTarget extends Target {
             props[effectName] = this.effects[effectName];
             this.renderer.updateDrawableProperties(this.drawableID, props);
             if (this.visible) {
+                this.emit(RenderedTarget.EVENT_TARGET_VISUAL_CHANGE, this);
                 this.runtime.requestRedraw();
             }
         }
@@ -405,6 +426,7 @@ class RenderedTarget extends Target {
         if (this.renderer) {
             this.renderer.updateDrawableProperties(this.drawableID, this.effects);
             if (this.visible) {
+                this.emit(RenderedTarget.EVENT_TARGET_VISUAL_CHANGE, this);
                 this.runtime.requestRedraw();
             }
         }
@@ -430,7 +452,7 @@ class RenderedTarget extends Target {
                 typeof costume.rotationCenterX !== 'undefined' &&
                 typeof costume.rotationCenterY !== 'undefined'
             ) {
-                const scale = costume.bitmapResolution || 1;
+                const scale = costume.bitmapResolution || 2;
                 drawableProperties.rotationCenter = [
                     costume.rotationCenterX / scale,
                     costume.rotationCenterY / scale
@@ -438,6 +460,7 @@ class RenderedTarget extends Target {
             }
             this.renderer.updateDrawableProperties(this.drawableID, drawableProperties);
             if (this.visible) {
+                this.emit(RenderedTarget.EVENT_TARGET_VISUAL_CHANGE, this);
                 this.runtime.requestRedraw();
             }
         }
@@ -565,6 +588,7 @@ class RenderedTarget extends Target {
                 scale: renderedDirectionScale.scale
             });
             if (this.visible) {
+                this.emit(RenderedTarget.EVENT_TARGET_VISUAL_CHANGE, this);
                 this.runtime.requestRedraw();
             }
         }
@@ -617,7 +641,7 @@ class RenderedTarget extends Target {
         if (this.renderer) {
             const renderedDirectionScale = this._getRenderedDirectionAndScale();
             const costume = this.getCostumes()[this.currentCostume];
-            const bitmapResolution = costume.bitmapResolution || 1;
+            const bitmapResolution = costume.bitmapResolution || 2;
             const props = {
                 position: [this.x, this.y],
                 direction: renderedDirectionScale.direction,
@@ -637,6 +661,7 @@ class RenderedTarget extends Target {
             }
             this.renderer.updateDrawableProperties(this.drawableID, props);
             if (this.visible) {
+                this.emit(RenderedTarget.EVENT_TARGET_VISUAL_CHANGE, this);
                 this.runtime.requestRedraw();
             }
         }
@@ -734,7 +759,11 @@ class RenderedTarget extends Target {
         if (!firstClone || !this.renderer) {
             return false;
         }
-        const drawableCandidates = firstClone.sprite.clones.map(clone => clone.drawableID);
+        // Filter out dragging targets. This means a sprite that is being dragged
+        // can detect other sprites using touching <sprite>, but cannot be detected
+        // by other sprites while it is being dragged. This matches Scratch 2.0 behavior.
+        const drawableCandidates = firstClone.sprite.clones.filter(clone => !clone.dragging)
+            .map(clone => clone.drawableID);
         return this.renderer.isTouchingDrawables(
             this.drawableID, drawableCandidates);
     }
@@ -1003,7 +1032,12 @@ class RenderedTarget extends Target {
             variables: this.variables,
             lists: this.lists,
             costumes: costumes,
-            sounds: this.getSounds()
+            sounds: this.getSounds(),
+            tempo: this.tempo,
+            volume: this.volume,
+            videoTransparency: this.videoTransparency,
+            videoState: this.videoState
+
         };
     }
 
@@ -1017,6 +1051,7 @@ class RenderedTarget extends Target {
         if (this.renderer && this.drawableID !== null) {
             this.renderer.destroyDrawable(this.drawableID);
             if (this.visible) {
+                this.emit(RenderedTarget.EVENT_TARGET_VISUAL_CHANGE, this);
                 this.runtime.requestRedraw();
             }
         }

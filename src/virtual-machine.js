@@ -2,6 +2,7 @@ const TextEncoder = require('text-encoding').TextEncoder;
 const EventEmitter = require('events');
 const JSZip = require('jszip');
 
+const Buffer = require('buffer').Buffer;
 const centralDispatch = require('./dispatch/central-dispatch');
 const ExtensionManager = require('./extension-support/extension-manager');
 const log = require('./util/log');
@@ -17,8 +18,21 @@ const Variable = require('./engine/variable');
 const {loadCostume} = require('./import/load-costume.js');
 const {loadSound} = require('./import/load-sound.js');
 const {serializeSounds, serializeCostumes} = require('./serialization/serialize-assets');
+require('canvas-toBlob');
 
 const RESERVED_NAMES = ['_mouse_', '_stage_', '_edge_', '_myself_', '_random_'];
+
+const CORE_EXTENSIONS = [
+    // 'motion',
+    // 'looks',
+    // 'sound',
+    // 'events',
+    // 'control',
+    // 'sensing',
+    // 'operators',
+    // 'variables',
+    // 'myBlocks'
+];
 
 const RemoteMsg = require('./util/remote-msg');
 
@@ -180,6 +194,10 @@ class VirtualMachine extends EventEmitter {
         }
     }
 
+    setVideoProvider (videoProvider) {
+        this.runtime.ioDevices.video.setProvider(videoProvider);
+    }
+
     /**
      * Load a Scratch project from a .sb, .sb2, .sb3 or json string.
      * @param {string | object} input A json string, object, or ArrayBuffer representing the project to load.
@@ -198,13 +216,11 @@ class VirtualMachine extends EventEmitter {
         }
 
         const validationPromise = new Promise((resolve, reject) => {
-            validate(input, (error, res) => {
-                if (error) {
-                    reject(error);
-                }
-                if (res) {
-                    resolve(res);
-                }
+            // The second argument of false below indicates to the validator that the
+            // input should be parsed/validated as an entire project (and not a single sprite)
+            validate(input, false, (error, res) => {
+                if (error) return reject(error);
+                resolve(res);
             });
         });
 
@@ -232,7 +248,7 @@ class VirtualMachine extends EventEmitter {
         const vm = this;
         const promise = storage.load(storage.AssetType.Project, id);
         promise.then(projectAsset => {
-            vm.loadProject(projectAsset.decodeText());
+            vm.loadProject(projectAsset.data);
         });
     }
 
@@ -249,7 +265,6 @@ class VirtualMachine extends EventEmitter {
         const zip = new JSZip();
 
         // Put everything in a zip file
-        // TODO compression?
         zip.file('project.json', projectJson);
         for (let i = 0; i < soundDescs.length; i++) {
             const currSound = soundDescs[i];
@@ -260,7 +275,13 @@ class VirtualMachine extends EventEmitter {
             zip.file(currCostume.fileName, currCostume.fileContent);
         }
 
-        return zip.generateAsync({type: 'blob'});
+        return zip.generateAsync({
+            type: 'blob',
+            compression: 'DEFLATE',
+            compressionOptions: {
+                level: 6 // Tradeoff between best speed (1) and best compression (9)
+            }
+        });
     }
 
     /**
@@ -318,6 +339,15 @@ class VirtualMachine extends EventEmitter {
      */
     installTargets (targets, extensions, wholeProject) {
         const extensionPromises = [];
+
+        if (wholeProject) {
+            CORE_EXTENSIONS.forEach(extensionID => {
+                if (!this.extensionManager.isExtensionLoaded(extensionID)) {
+                    extensionPromises.push(this.extensionManager.loadExtensionURL(extensionID));
+                }
+            });
+        }
+
         extensions.extensionIDs.forEach(extensionID => {
             if (!this.extensionManager.isExtensionLoaded(extensionID)) {
                 const extensionURL = extensions.extensionURLs.get(extensionID) || extensionID;
@@ -328,9 +358,6 @@ class VirtualMachine extends EventEmitter {
         targets = targets.filter(target => !!target);
 
         return Promise.all(extensionPromises).then(() => {
-            if (wholeProject) {
-                this.clear();
-            }
             targets.forEach(target => {
                 this.runtime.targets.push(target);
                 (/** @type RenderedTarget */ target).updateAllDrawableProperties();
@@ -352,25 +379,80 @@ class VirtualMachine extends EventEmitter {
     }
 
     /**
-     * Add a single sprite from the "Sprite2" (i.e., SB2 sprite) format.
-     * @param {string} json JSON string representing the sprite.
-     * @returns {Promise} Promise that resolves after the sprite is added
+     * Add a sprite, this could be .sprite2 or .sprite3. Unpack and validate
+     * such a file first.
+     * @param {string | object} input A json string, object, or ArrayBuffer representing the project to load.
+     * @return {!Promise} Promise that resolves after targets are installed.
      */
-    addSprite2 (json) {
-        // Validate & parse
-        if (typeof json !== 'string') {
-            log.error('Failed to parse sprite. Non-string supplied to addSprite2.');
-            return;
-        }
-        json = JSON.parse(json);
-        if (typeof json !== 'object') {
-            log.error('Failed to parse sprite. JSON supplied to addSprite2 is not an object.');
-            return;
+    addSprite (input) {
+        const errorPrefix = 'Sprite Upload Error:';
+        if (typeof input === 'object' && !(input instanceof ArrayBuffer) &&
+          !ArrayBuffer.isView(input)) {
+            // If the input is an object and not any ArrayBuffer
+            // or an ArrayBuffer view (this includes all typed arrays and DataViews)
+            // turn the object into a JSON string, because we suspect
+            // this is a project.json as an object
+            // validate expects a string or buffer as input
+            // TODO not sure if we need to check that it also isn't a data view
+            input = JSON.stringify(input);
         }
 
-        return sb2.deserialize(json, this.runtime, true)
+        const validationPromise = new Promise((resolve, reject) => {
+            // The second argument of true below indicates to the parser/validator
+            // that the given input should be treated as a single sprite and not
+            // an entire project
+            validate(input, true, (error, res) => {
+                if (error) return reject(error);
+                resolve(res);
+            });
+        });
+
+        return validationPromise
+            .then(validatedInput => {
+                const projectVersion = validatedInput[0].projectVersion;
+                if (projectVersion === 2) {
+                    return this._addSprite2(validatedInput[0], validatedInput[1]);
+                }
+                if (projectVersion === 3) {
+                    return this._addSprite3(validatedInput[0], validatedInput[1]);
+                }
+                return Promise.reject(`${errorPrefix} Unable to verify sprite version.`);
+            })
+            .catch(error => {
+                // Intentionally rejecting here (want errors to be handled by caller)
+                if (error.hasOwnProperty('validationError')) {
+                    return Promise.reject(JSON.stringify(error));
+                }
+                return Promise.reject(`${errorPrefix} ${error}`);
+            });
+    }
+
+    /**
+     * Add a single sprite from the "Sprite2" (i.e., SB2 sprite) format.
+     * @param {object} sprite Object representing 2.0 sprite to be added.
+     * @param {?ArrayBuffer} zip Optional zip of assets being referenced by json
+     * @returns {Promise} Promise that resolves after the sprite is added
+     */
+    _addSprite2 (sprite, zip) {
+        // Validate & parse
+
+        return sb2.deserialize(sprite, this.runtime, true, zip)
             .then(({targets, extensions}) =>
                 this.installTargets(targets, extensions, false));
+    }
+
+    /**
+     * Add a single sb3 sprite.
+     * @param {object} sprite Object rperesenting 3.0 sprite to be added.
+     * @param {?ArrayBuffer} zip Optional zip of assets being referenced by target json
+     * @returns {Promise} Promise that resolves after the sprite is added
+     */
+    _addSprite3 (sprite, zip) {
+        // Validate & parse
+
+        return sb3
+            .deserialize(sprite, this.runtime, zip, true)
+            .then(({targets, extensions}) => this.installTargets(targets, extensions, false));
     }
 
     /**
@@ -501,6 +583,7 @@ class VirtualMachine extends EventEmitter {
                 storage.DataFormat.WAV,
                 soundEncoding
             );
+            sound.dataFormat = storage.DataFormat.WAV;
             sound.md5 = `${sound.assetId}.${sound.dataFormat}`;
         }
         // If soundEncoding is null, it's because gui had a problem
@@ -519,17 +602,75 @@ class VirtualMachine extends EventEmitter {
     }
 
     /**
-     * Get an SVG string from storage.
+     * Get a string representation of the image from storage.
      * @param {int} costumeIndex - the index of the costume to be got.
-     * @return {string} the costume's SVG string, or null if it's not an SVG costume.
+     * @return {string} the costume's SVG string if it's SVG,
+     *     a dataURI if it's a PNG or JPG, or null if it couldn't be found or decoded.
      */
-    getCostumeSvg (costumeIndex) {
+    getCostume (costumeIndex) {
         const id = this.editingTarget.getCostumes()[costumeIndex].assetId;
-        if (id && this.runtime && this.runtime.storage &&
-                this.runtime.storage.get(id).dataFormat === 'svg') {
+        if (!id || !this.runtime || !this.runtime.storage) return null;
+        const format = this.runtime.storage.get(id).dataFormat;
+        if (format === this.runtime.storage.DataFormat.SVG) {
             return this.runtime.storage.get(id).decodeText();
+        } else if (format === this.runtime.storage.DataFormat.PNG ||
+                format === this.runtime.storage.DataFormat.JPG) {
+            return this.runtime.storage.get(id).encodeDataURI();
         }
+        log.error(`Unhandled format: ${this.runtime.storage.get(id).dataFormat}`);
         return null;
+    }
+
+    /**
+     * Update a costume with the given bitmap
+     * @param {!int} costumeIndex - the index of the costume to be updated.
+     * @param {!ImageData} bitmap - new bitmap for the renderer.
+     * @param {!number} rotationCenterX x of point about which the costume rotates, relative to its upper left corner
+     * @param {!number} rotationCenterY y of point about which the costume rotates, relative to its upper left corner
+     * @param {!number} bitmapResolution 1 for bitmaps that have 1 pixel per unit of stage,
+     *     2 for double-resolution bitmaps
+     */
+    updateBitmap (costumeIndex, bitmap, rotationCenterX, rotationCenterY, bitmapResolution) {
+        const costume = this.editingTarget.getCostumes()[costumeIndex];
+        if (!(costume && this.runtime && this.runtime.renderer)) return;
+
+        costume.rotationCenterX = rotationCenterX;
+        costume.rotationCenterY = rotationCenterY;
+
+        // @todo: updateBitmapSkin does not take ImageData
+        const canvas = document.createElement('canvas');
+        canvas.width = bitmap.width;
+        canvas.height = bitmap.height;
+        const context = canvas.getContext('2d');
+        context.putImageData(bitmap, 0, 0);
+
+        // Divide by resolution because the renderer's definition of the rotation center
+        // is the rotation center divided by the bitmap resolution
+        this.runtime.renderer.updateBitmapSkin(
+            costume.skinId,
+            canvas,
+            bitmapResolution,
+            [rotationCenterX / bitmapResolution, rotationCenterY / bitmapResolution]
+        );
+
+        // @todo there should be a better way to get from ImageData to a decodable storage format
+        canvas.toBlob(blob => {
+            const reader = new FileReader();
+            reader.addEventListener('loadend', () => {
+                const storage = this.runtime.storage;
+                costume.assetId = storage.builtinHelper.cache(
+                    storage.AssetType.ImageBitmap,
+                    storage.DataFormat.PNG,
+                    Buffer.from(reader.result)
+                );
+                costume.dataFormat = storage.DataFormat.PNG;
+                costume.bitmapResolution = bitmapResolution;
+                costume.size = [bitmap.width, bitmap.height];
+                costume.md5 = `${costume.assetId}.${costume.dataFormat}`;
+                this.emitTargetsUpdate();
+            });
+            reader.readAsArrayBuffer(blob);
+        });
     }
 
     /**
@@ -545,6 +686,7 @@ class VirtualMachine extends EventEmitter {
             costume.rotationCenterX = rotationCenterX;
             costume.rotationCenterY = rotationCenterY;
             this.runtime.renderer.updateSVGSkin(costume.skinId, svg, [rotationCenterX, rotationCenterY]);
+            costume.size = this.runtime.renderer.getSkinSize(costume.skinId);
         }
         const storage = this.runtime.storage;
         costume.assetId = storage.builtinHelper.cache(
@@ -556,6 +698,7 @@ class VirtualMachine extends EventEmitter {
         // so the dataFormat should be 'svg'
         costume.dataFormat = storage.DataFormat.SVG;
         costume.md5 = `${costume.assetId}.${costume.dataFormat}`;
+        costume.bitmapResolution = 1;
         this.emitTargetsUpdate();
     }
 
@@ -947,7 +1090,8 @@ class VirtualMachine extends EventEmitter {
         if (target) {
             this._dragTarget = null;
             target.stopDrag();
-            this.setEditingTarget(target.id);
+            this.setEditingTarget(target.sprite && target.sprite.clones[0] ?
+                target.sprite.clones[0].id : target.id);
         }
     }
 

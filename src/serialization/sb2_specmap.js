@@ -206,6 +206,45 @@ const specMap = {
         argMap: [
         ]
     },
+    'scrollRight': {
+        opcode: 'motion_scroll_right',
+        argMap: [
+            {
+                type: 'input',
+                inputOp: 'math_number',
+                inputName: 'DISTANCE'
+            }
+        ]
+    },
+    'scrollUp': {
+        opcode: 'motion_scroll_up',
+        argMap: [
+            {
+                type: 'input',
+                inputOp: 'math_number',
+                inputName: 'DISTANCE'
+            }
+        ]
+    },
+    'scrollAlign': {
+        opcode: 'motion_align_scene',
+        argMap: [
+            {
+                type: 'field',
+                fieldName: 'ALIGNMENT'
+            }
+        ]
+    },
+    'xScroll': {
+        opcode: 'motion_xscroll',
+        argMap: [
+        ]
+    },
+    'yScroll': {
+        opcode: 'motion_yscroll',
+        argMap: [
+        ]
+    },
     'say:duration:elapsed:from:': {
         opcode: 'looks_sayforsecs',
         argMap: [
@@ -263,6 +302,11 @@ const specMap = {
     },
     'hide': {
         opcode: 'looks_hide',
+        argMap: [
+        ]
+    },
+    'hideAll': {
+        opcode: 'looks_hideallsprites',
         argMap: [
         ]
     },
@@ -344,6 +388,26 @@ const specMap = {
             }
         ]
     },
+    'changeStretchBy:': {
+        opcode: 'looks_changestretchby',
+        argMap: [
+            {
+                type: 'input',
+                inputOp: 'math_number',
+                inputName: 'CHANGE'
+            }
+        ]
+    },
+    'setStretchTo:': {
+        opcode: 'looks_setstretchto',
+        argMap: [
+            {
+                type: 'input',
+                inputOp: 'math_number',
+                inputName: 'STRETCH'
+            }
+        ]
+    },
     'comeToFront': {
         opcode: 'looks_gotofrontback',
         argMap: [
@@ -420,11 +484,11 @@ const specMap = {
         ]
     },
     'playDrum': {
-        opcode: 'music.playDrumForBeats',
+        opcode: 'music_playDrumForBeats',
         argMap: [
             {
                 type: 'input',
-                inputOp: 'music.menu.DRUM',
+                inputOp: 'music_menu_DRUM',
                 inputName: 'DRUM'
             },
             {
@@ -435,7 +499,7 @@ const specMap = {
         ]
     },
     'rest:elapsed:from:': {
-        opcode: 'music.restForBeats',
+        opcode: 'music_restForBeats',
         argMap: [
             {
                 type: 'input',
@@ -445,7 +509,7 @@ const specMap = {
         ]
     },
     'noteOn:duration:elapsed:from:': {
-        opcode: 'music.playNoteForBeats',
+        opcode: 'music_playNoteForBeats',
         argMap: [
             {
                 type: 'input',
@@ -460,11 +524,11 @@ const specMap = {
         ]
     },
     'instrument:': {
-        opcode: 'music.setInstrument',
+        opcode: 'music_setInstrument',
         argMap: [
             {
                 type: 'input',
-                inputOp: 'music.menu.INSTRUMENT',
+                inputOp: 'music_menu_INSTRUMENT',
                 inputName: 'INSTRUMENT'
             }
         ]
@@ -495,7 +559,7 @@ const specMap = {
         ]
     },
     'changeTempoBy:': {
-        opcode: 'music.changeTempo',
+        opcode: 'music_changeTempo',
         argMap: [
             {
                 type: 'input',
@@ -505,7 +569,7 @@ const specMap = {
         ]
     },
     'setTempoTo:': {
-        opcode: 'music.setTempo',
+        opcode: 'music_setTempo',
         argMap: [
             {
                 type: 'input',
@@ -515,32 +579,32 @@ const specMap = {
         ]
     },
     'tempo': {
-        opcode: 'music.getTempo',
+        opcode: 'music_getTempo',
         argMap: [
         ]
     },
     'clearPenTrails': {
-        opcode: 'pen.clear',
+        opcode: 'pen_clear',
         argMap: [
         ]
     },
     'stampCostume': {
-        opcode: 'pen.stamp',
+        opcode: 'pen_stamp',
         argMap: [
         ]
     },
     'putPenDown': {
-        opcode: 'pen.penDown',
+        opcode: 'pen_penDown',
         argMap: [
         ]
     },
     'putPenUp': {
-        opcode: 'pen.penUp',
+        opcode: 'pen_penUp',
         argMap: [
         ]
     },
     'penColor:': {
-        opcode: 'pen.setPenColorToColor',
+        opcode: 'pen_setPenColorToColor',
         argMap: [
             {
                 type: 'input',
@@ -550,7 +614,7 @@ const specMap = {
         ]
     },
     'changePenHueBy:': {
-        opcode: 'pen.changePenHueBy',
+        opcode: 'pen_changePenHueBy',
         argMap: [
             {
                 type: 'input',
@@ -560,7 +624,7 @@ const specMap = {
         ]
     },
     'setPenHueTo:': {
-        opcode: 'pen.setPenHueToNumber',
+        opcode: 'pen_setPenHueToNumber',
         argMap: [
             {
                 type: 'input',
@@ -570,7 +634,7 @@ const specMap = {
         ]
     },
     'changePenShadeBy:': {
-        opcode: 'pen.changePenShadeBy',
+        opcode: 'pen_changePenShadeBy',
         argMap: [
             {
                 type: 'input',
@@ -580,7 +644,7 @@ const specMap = {
         ]
     },
     'setPenShadeTo:': {
-        opcode: 'pen.setPenShadeToNumber',
+        opcode: 'pen_setPenShadeToNumber',
         argMap: [
             {
                 type: 'input',
@@ -590,7 +654,7 @@ const specMap = {
         ]
     },
     'changePenSizeBy:': {
-        opcode: 'pen.changePenSizeBy',
+        opcode: 'pen_changePenSizeBy',
         argMap: [
             {
                 type: 'input',
@@ -600,7 +664,7 @@ const specMap = {
         ]
     },
     'penSize:': {
-        opcode: 'pen.setPenSizeTo',
+        opcode: 'pen_setPenSizeTo',
         argMap: [
             {
                 type: 'input',
@@ -610,17 +674,17 @@ const specMap = {
         ]
     },
     'senseVideoMotion': {
-        opcode: 'videoSensing.videoOn',
+        opcode: 'videoSensing_videoOn',
         argMap: [
             {
                 type: 'input',
-                inputOp: 'videoSensing.menu.MOTION_DIRECTION',
-                inputName: 'MOTION_DIRECTION'
+                inputOp: 'videoSensing_menu_ATTRIBUTE',
+                inputName: 'ATTRIBUTE'
             },
             {
                 type: 'input',
-                inputOp: 'videoSensing.menu.STAGE_SPRITE',
-                inputName: 'STAGE_SPRITE'
+                inputOp: 'videoSensing_menu_SUBJECT',
+                inputName: 'SUBJECT'
             }
         ]
     },
@@ -655,7 +719,7 @@ const specMap = {
     'whenSensorGreaterThan': ([, sensor]) => {
         if (sensor === 'video motion') {
             return {
-                opcode: 'videoSensing.whenMotionGreaterThan',
+                opcode: 'videoSensing_whenMotionGreaterThan',
                 argMap: [
                     // skip the first arg, since we converted to a video specific sensing block
                     {},
@@ -799,6 +863,19 @@ const specMap = {
             }
         ]
     },
+    'doWhile': {
+        opcode: 'control_while',
+        argMap: [
+            {
+                type: 'input',
+                inputName: 'CONDITION'
+            },
+            {
+                type: 'input',
+                inputName: 'SUBSTACK'
+            }
+        ]
+    },
     'doForLoop': {
         opcode: 'control_for_each',
         argMap: [
@@ -844,6 +921,30 @@ const specMap = {
     'deleteClone': {
         opcode: 'control_delete_this_clone',
         argMap: [
+        ]
+    },
+    'COUNT': {
+        opcode: 'control_get_counter',
+        argMap: [
+        ]
+    },
+    'INCR_COUNT': {
+        opcode: 'control_incr_counter',
+        argMap: [
+        ]
+    },
+    'CLR_COUNT': {
+        opcode: 'control_clear_counter',
+        argMap: [
+        ]
+    },
+    'warpSpeed': {
+        opcode: 'control_all_at_once',
+        argMap: [
+            {
+                type: 'input',
+                inputName: 'SUBSTACK'
+            }
         ]
     },
     'touching:': {
@@ -936,6 +1037,11 @@ const specMap = {
         argMap: [
         ]
     },
+    'isLoud': {
+        opcode: 'sensing_loud',
+        argMap: [
+        ]
+    },
     // 'senseVideoMotion': {
     //     opcode: 'sensing_videoon',
     //     argMap: [
@@ -952,17 +1058,17 @@ const specMap = {
     //     ]
     // },
     'setVideoState': {
-        opcode: 'sensing_videotoggle',
+        opcode: 'videoSensing_videoToggle',
         argMap: [
             {
                 type: 'input',
-                inputOp: 'sensing_videotogglemenu',
-                inputName: 'VIDEOTOGGLEMENU'
+                inputOp: 'videoSensing_menu_VIDEO_STATE',
+                inputName: 'VIDEO_STATE'
             }
         ]
     },
     'setVideoTransparency': {
-        opcode: 'sensing_setvideotransparency',
+        opcode: 'videoSensing_setVideoTransparency',
         argMap: [
             {
                 type: 'input',
@@ -1012,6 +1118,11 @@ const specMap = {
     },
     'getUserName': {
         opcode: 'sensing_username',
+        argMap: [
+        ]
+    },
+    'getUserId': {
+        opcode: 'sensing_userid',
         argMap: [
         ]
     },
@@ -1250,6 +1361,18 @@ const specMap = {
         ]
     },
     'readVariable': {
+        opcode: 'data_variable',
+        argMap: [
+            {
+                type: 'field',
+                fieldName: 'VARIABLE',
+                variableType: Variable.SCALAR_TYPE
+            }
+        ]
+    },
+    // Scratch 2 uses this alternative variable getter opcode only in monitors,
+    // blocks use the `readVariable` opcode above.
+    'getVar:': {
         opcode: 'data_variable',
         argMap: [
             {

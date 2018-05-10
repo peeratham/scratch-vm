@@ -4,6 +4,7 @@ const xmlEscape = require('../util/xml-escape');
 const MonitorRecord = require('./monitor-record');
 const Clone = require('../util/clone');
 const {Map} = require('immutable');
+const BlocksExecuteCache = require('./blocks-execute-cache');
 
 /**
  * @fileoverview
@@ -47,7 +48,14 @@ class Blocks {
              * Cache procedure definitions by block id
              * @type {object.<string, ?string>}
              */
-            procedureDefinitions: {}
+            procedureDefinitions: {},
+
+            /**
+             * A cache for execute to use and store on. Only available to
+             * execute.
+             * @type {object.<string, object>}
+             */
+            _executeCached: {}
         };
 
     }
@@ -359,6 +367,7 @@ class Blocks {
         this._cache.inputs = {};
         this._cache.procedureParamNames = {};
         this._cache.procedureDefinitions = {};
+        this._cache._executeCached = {};
     }
 
     /**
@@ -432,22 +441,34 @@ class Blocks {
                 break;
             }
 
-            const isSpriteSpecific = optRuntime.monitorBlockInfo.hasOwnProperty(block.opcode) &&
-                optRuntime.monitorBlockInfo[block.opcode].isSpriteSpecific;
+            // Variable blocks may be sprite specific depending on the owner of the variable
+            let isSpriteLocalVariable = false;
+            if (block.opcode === 'data_variable') {
+                isSpriteLocalVariable = !optRuntime.getEditingTarget().isStage &&
+                    optRuntime.getEditingTarget().variables[block.fields.VARIABLE.id];
+            } else if (block.opcode === 'data_listcontents') {
+                isSpriteLocalVariable = !optRuntime.getEditingTarget().isStage &&
+                    optRuntime.getEditingTarget().variables[block.fields.LIST.id];
+            }
+
+
+            const isSpriteSpecific = isSpriteLocalVariable ||
+                (optRuntime.monitorBlockInfo.hasOwnProperty(block.opcode) &&
+                optRuntime.monitorBlockInfo[block.opcode].isSpriteSpecific);
             block.targetId = isSpriteSpecific ? optRuntime.getEditingTarget().id : null;
-            
+
             if (wasMonitored && !block.isMonitored) {
                 optRuntime.requestRemoveMonitor(block.id);
             } else if (!wasMonitored && block.isMonitored) {
                 optRuntime.requestAddMonitor(MonitorRecord({
-                    // @todo(vm#564) this will collide if multiple sprites use same block
                     id: block.id,
                     targetId: block.targetId,
                     spriteName: block.targetId ? optRuntime.getTargetById(block.targetId).getName() : null,
                     opcode: block.opcode,
                     params: this._getBlockParams(block),
                     // @todo(vm#565) for numerical values with decimals, some countries use comma
-                    value: ''
+                    value: '',
+                    mode: block.opcode === 'data_listcontents' ? 'list' : 'default'
                 }));
             }
             break;
@@ -858,5 +879,43 @@ class Blocks {
         if (this._blocks[topBlockId]) this._blocks[topBlockId].topLevel = false;
     }
 }
+
+/**
+ * A private method shared with execute to build an object containing the block
+ * information execute needs and that is reset when other cached Blocks info is
+ * reset.
+ * @param {Blocks} blocks Blocks containing the expected blockId
+ * @param {string} blockId blockId for the desired execute cache
+ * @param {function} CacheType constructor for cached block information
+ * @return {object} execute cache object
+ */
+BlocksExecuteCache.getCached = function (blocks, blockId, CacheType) {
+    let cached = blocks._cache._executeCached[blockId];
+    if (typeof cached !== 'undefined') {
+        return cached;
+    }
+
+    const block = blocks.getBlock(blockId);
+    if (typeof block === 'undefined') return null;
+
+    if (typeof CacheType === 'undefined') {
+        cached = {
+            opcode: blocks.getOpcode(block),
+            fields: blocks.getFields(block),
+            inputs: blocks.getInputs(block),
+            mutation: blocks.getMutation(block)
+        };
+    } else {
+        cached = new CacheType(blocks, {
+            opcode: blocks.getOpcode(block),
+            fields: blocks.getFields(block),
+            inputs: blocks.getInputs(block),
+            mutation: blocks.getMutation(block)
+        });
+    }
+
+    blocks._cache._executeCached[blockId] = cached;
+    return cached;
+};
 
 module.exports = Blocks;
