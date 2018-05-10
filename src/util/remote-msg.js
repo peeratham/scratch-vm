@@ -6,7 +6,10 @@ class RemoteMsg {
 		this.vm = vm;
 		// this.socket = new SockJS('http://localhost:8080/service-endpoint');
 		// this.stompClient = Stomp.over(this.socket);
-		this.stompClient = Stomp.client('ws://localhost:8080/service-endpoint');
+		const base_deployment_server_url = '128.173.237.93:8888';
+		const base_local_server_url = 'localhost:8888';
+		this.stompClient = Stomp.client('ws://'+base_deployment_server_url+'/service-endpoint'); 		
+
 		this.stompClient.debug = null;
   		
   		this.stompClient.connect({}, function (frame) {
