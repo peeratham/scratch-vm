@@ -30,11 +30,7 @@ const deserializeSound = function (sound, runtime, zip, assetFileName) {
         // This sound has already been cached.
         return Promise.resolve(null);
     }
-    if (!zip) {
-        // TODO adding this case to make integration tests pass, need to rethink
-        // the entire structure of saving/loading here (w.r.t. differences between
-        // loading from local zip file or from server)
-        log.error('Zipped assets were not provided.');
+    if (!zip) { // Zip will not be provided if loading project json from server
         return Promise.resolve(null);
     }
     const soundFile = zip.file(fileName);
@@ -42,10 +38,8 @@ const deserializeSound = function (sound, runtime, zip, assetFileName) {
         log.error(`Could not find sound file associated with the ${sound.name} sound.`);
         return Promise.resolve(null);
     }
-    let dataFormat = null;
-    if (sound.dataFormat.toLowerCase() === 'wav') {
-        dataFormat = storage.DataFormat.WAV;
-    }
+    const dataFormat = sound.dataFormat.toLowerCase() === 'mp3' ?
+        storage.DataFormat.MP3 : storage.DataFormat.WAV;
     if (!JSZip.support.uint8array) {
         log.error('JSZip uint8array is not supported in this browser.');
         return Promise.resolve(null);
@@ -93,11 +87,7 @@ const deserializeCostume = function (costume, runtime, zip, assetFileName) {
         return Promise.resolve(null);
     }
 
-    if (!zip) {
-        // TODO adding this case to make integration tests pass, need to rethink
-        // the entire structure of saving/loading here (w.r.t. differences between
-        // loading from local zip file or from server)
-        log.error('Zipped assets were not provided.');
+    if (!zip) { // Zip will not be provided if loading project json from server
         return Promise.resolve(null);
     }
 
@@ -106,14 +96,11 @@ const deserializeCostume = function (costume, runtime, zip, assetFileName) {
         log.error(`Could not find costume file associated with the ${costume.name} costume.`);
         return Promise.resolve(null);
     }
-    let dataFormat = null;
     let assetType = null;
     const costumeFormat = costume.dataFormat.toLowerCase();
     if (costumeFormat === 'svg') {
-        dataFormat = storage.DataFormat.SVG;
         assetType = storage.AssetType.ImageVector;
-    } else if (costumeFormat === 'png') {
-        dataFormat = storage.DataFormat.PNG;
+    } else if (['png', 'bmp', 'jpeg', 'jpg', 'gif'].indexOf(costumeFormat) >= 0) {
         assetType = storage.AssetType.ImageBitmap;
     } else {
         log.error(`Unexpected file format for costume: ${costumeFormat}`);
@@ -126,7 +113,8 @@ const deserializeCostume = function (costume, runtime, zip, assetFileName) {
     return costumeFile.async('uint8array').then(data => {
         storage.builtinHelper.cache(
             assetType,
-            dataFormat,
+            // TODO eventually we want to map non-png's to their actual file types?
+            costumeFormat,
             data,
             assetId
         );
