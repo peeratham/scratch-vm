@@ -10,13 +10,23 @@ const BlockType = require('./block-type');
 const Scratch3PenBlocks = require('../extensions/scratch3_pen');
 const Scratch3WeDo2Blocks = require('../extensions/scratch3_wedo2');
 const Scratch3MusicBlocks = require('../extensions/scratch3_music');
+const Scratch3MicroBitBlocks = require('../extensions/scratch3_microbit');
+const Scratch3Text2SpeechBlocks = require('../extensions/scratch3_text2speech');
+const Scratch3TranslateBlocks = require('../extensions/scratch3_translate');
 const Scratch3VideoSensingBlocks = require('../extensions/scratch3_video_sensing');
+const Scratch3SpeechBlocks = require('../extensions/scratch3_speech');
+const Scratch3Ev3Blocks = require('../extensions/scratch3_ev3');
 
 const builtinExtensions = {
     pen: Scratch3PenBlocks,
     wedo2: Scratch3WeDo2Blocks,
     music: Scratch3MusicBlocks,
-    videoSensing: Scratch3VideoSensingBlocks
+    microbit: Scratch3MicroBitBlocks,
+    text2speech: Scratch3Text2SpeechBlocks,
+    translate: Scratch3TranslateBlocks,
+    videoSensing: Scratch3VideoSensingBlocks,
+    speech: Scratch3SpeechBlocks,
+    ev3: Scratch3Ev3Blocks
 };
 
 /**
@@ -134,18 +144,21 @@ class ExtensionManager {
     }
 
     /**
-    * regenerate blockinfo for any loaded extensions
-    */
+     * Regenerate blockinfo for any loaded extensions
+     * @returns {Promise} resolved once all the extensions have been reinitialized
+     */
     refreshBlocks () {
-        this._loadedExtensions.forEach(serviceName => {
+        const allPromises = Array.from(this._loadedExtensions.values()).map(serviceName =>
             dispatch.call(serviceName, 'getInfo')
                 .then(info => {
+                    info = this._prepareExtensionInfo(serviceName, info);
                     dispatch.call('runtime', '_refreshExtensionPrimitives', info);
                 })
                 .catch(e => {
                     log.error(`Failed to refresh buildtin extension primitives: ${JSON.stringify(e)}`);
-                });
-        });
+                })
+        );
+        return Promise.all(allPromises);
     }
 
     allocateWorker () {

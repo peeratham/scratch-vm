@@ -34,15 +34,11 @@ FakeRenderer.prototype.isTouchingColor = function (d, c) { // eslint-disable-lin
     return true;
 };
 
-FakeRenderer.prototype.setDrawableOrder = function (d, l, optA, optB) { // eslint-disable-line no-unused-vars
-    return true;
-};
-
 FakeRenderer.prototype.getBounds = function (d) { // eslint-disable-line no-unused-vars
     return {left: this.x, right: this.x, top: this.y, bottom: this.y};
 };
 
-FakeRenderer.prototype.setDrawableOrder = function (d, a, optA, optB) { // eslint-disable-line no-unused-vars
+FakeRenderer.prototype.setDrawableOrder = function (d, a, optG, optA, optB) { // eslint-disable-line no-unused-vars
     if (d === 999) return 1; // fake for test case
     if (optA) {
         a += this.order;
@@ -55,6 +51,10 @@ FakeRenderer.prototype.setDrawableOrder = function (d, a, optA, optB) { // eslin
     return this.order;
 };
 
+FakeRenderer.prototype.getDrawableOrder = function (d) { // eslint-disable-line no-unused-vars
+    return 'stub';
+};
+
 FakeRenderer.prototype.pick = function (x, y, a, b, c) { // eslint-disable-line no-unused-vars
     return c[0];
 };
@@ -62,5 +62,7 @@ FakeRenderer.prototype.pick = function (x, y, a, b, c) { // eslint-disable-line 
 FakeRenderer.prototype.isTouchingColor = function (a, b) { // eslint-disable-line no-unused-vars
     return false;
 };
+
+FakeRenderer.prototype.setLayerGroupOrdering = function (a) {}; // eslint-disable-line no-unused-vars
 
 module.exports = FakeRenderer;
