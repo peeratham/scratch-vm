@@ -170,10 +170,16 @@ class Sequencer {
      */
     stepThread (thread) {
         let currentBlockId = thread.peekStack();
+
         if (!currentBlockId) {
             // A "null block" - empty branch.
             thread.popStack();
         }
+
+        if (this.runtime.profiler !== null) {
+            this.runtime.profiler.blockIdRecords[currentBlockId] = true;
+        }
+
         // Save the current block ID to notice if we did control flow.
         while ((currentBlockId = thread.peekStack())) {
             let isWarpMode = thread.peekStackFrame().warpMode;

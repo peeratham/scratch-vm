@@ -384,6 +384,9 @@ class ProfilerRun {
             setTimeout(() => {
                 this.vm.stopAll();
                 clearTimeout(this.vm.runtime._steppingInterval);
+
+                console.log(this.vm.runtime.profiler.blockIdRecords);
+                
                 this.vm.runtime.profiler = null;
 
                 this.frameTable.render();
@@ -439,6 +442,7 @@ class ProfilerRun {
 const runBenchmark = function () {
     // Lots of global variables to make debugging easier
     // Instantiate the VM.
+
     const vm = new window.VirtualMachine();
     Scratch.vm = vm;
 

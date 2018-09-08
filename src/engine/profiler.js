@@ -127,6 +127,12 @@ class Profiler {
         this.records = [];
 
         /**
+         * block id records 
+         */
+
+        this.blockIdRecords = {};
+
+        /**
          * A cache of ProfilerFrames to reuse when reporting the recorded
          * frames in records.
          * @type {Array.<ProfilerFrame>}
