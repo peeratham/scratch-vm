@@ -180,6 +180,36 @@ class StatView {
     }
 }
 
+class IdStatView {
+    constructor (name) {    //should be name of refactoring
+        this.name = name;
+        this.failures = [];
+    }
+
+    update(blockIdRecords) {
+        this.failures = blockIdRecords;
+    }
+
+    render ({table, isSlow}) {
+        const row = document.createElement('tr');
+        let cell = document.createElement('td');
+        cell.innerText = this.name;
+        row.appendChild(cell);
+
+        //failures
+
+        cell = document.createElement('td');
+        cell.innerText = JSON.stringify(this.failures);
+        row.appendChild(cell);
+
+        if (isSlow(this)) {
+            row.setAttribute('class', 'slow');
+        }
+
+        table.appendChild(row);
+    }
+}
+
 class RunningStats {
     constructor (profiler) {
         this.stepThreadsInnerId = profiler.idByName('Sequencer.stepThreads#inner');
@@ -309,20 +339,22 @@ class Opcodes {
     }
 }
 
-class BlockIds {
+class Refactorings {
     constructor (profiler) {
-        this.blockFunctionId = profiler.idByName('blockFunction');
+        this.blockIdRecords = profiler.blockIdRecords;
 
-        this.blockIds = {};
+        this.refactorings = {};
     }
 
     update (id, selfTime, totalTime, arg) {
-        if (id === this.blockFunctionId) {
-            if (!this.blockIds[arg]) {
-                this.blockIds[arg] = new StatView(arg);
+        arg = "Extract Variable";
+        // if (id === this.blockFunctionId) {
+            if (!this.refactorings[arg]) {
+                this.refactorings[arg] = new IdStatView(arg);
             }
-            this.blockIds[arg].update(selfTime, totalTime);
-        }
+            const failures = Object.keys(this.blockIdRecords).filter(k => k.startsWith("_assertion_failed"));
+            this.refactorings[arg].update(failures);
+        // }
     }
 }
 
@@ -353,28 +385,28 @@ class OpcodeTable extends StatTable {
     }
 }
 
-class BlockIdTable extends StatTable {
+class RefactoringTable extends StatTable {
     constructor (options) {
         super(options);
 
         this.profiler = options.profiler;
-        this.blockIds = options.blockIds;
+        this.refactorings = options.refactorings;
         this.frames = options.frames;
     }
 
     keys () {
-        const keys = Object.keys(this.blockIds.blockIds);
+        const keys = Object.keys(this.refactorings.refactorings);
         keys.sort();
         return keys;
     }
 
     viewOf (key) {
-        return this.blockIds.blockIds[key];
+        return this.refactorings.refactorings[key];
     }
 
     isSlow (key) {
         const blockFunctionTotalTime = this.frames.frames[this.profiler.idByName('blockFunction')].totalTime;
-        const rowTotalTime = this.blockIds.blockIds[key].totalTime;
+        const rowTotalTime = this.refactorings.refactorings[key].totalTime;
         const percentOfRun = rowTotalTime / blockFunctionTotalTime;
         return percentOfRun > SLOW;
     }
@@ -419,14 +451,14 @@ class ProfilerRun {
             frames
         });
 
-        const blockIds = this.blockIds = new BlockIds(profiler);
-        this.blockIdTable = new BlockIdTable({
+        const refactorings = this.refactorings = new Refactorings(profiler);
+        this.blockIdTable = new RefactoringTable({
             table: document
-                .getElementsByClassName('profile-count-blockid-table')[0]
+                .getElementsByClassName('profile-count-refactoring-table')[0]
                 .getElementsByTagName('tbody')[0],
 
             profiler,
-            blockIds,
+            refactorings,
             frames
         });
 
@@ -437,7 +469,7 @@ class ProfilerRun {
             }
             runningStats.update(id, selfTime, totalTime, arg);
             opcodes.update(id, selfTime, totalTime, arg);
-            blockIds.update(id, selfTime, totalTime, arg);
+            refactorings.update(id, selfTime, totalTime, arg);
             frames.update(id, selfTime, totalTime, arg);
         };
     }
@@ -480,7 +512,7 @@ class ProfilerRun {
                     type: 'BENCH_MESSAGE_COMPLETE',
                     frames: this.frames.frames,
                     opcodes: this.opcodes.opcodes,
-                    blockIds: this.blockIds.blockIds
+                    refactorings: this.refactorings.refactorings
                 }, '*');
 
                 setShareLink({
@@ -491,7 +523,7 @@ class ProfilerRun {
                     },
                     frames: this.frames.frames,
                     opcodes: this.opcodes.opcodes,
-                    blockIds: this.blockIds.blockIds
+                    refactorings: this.refactorings.refactorings
                 });
             }, 100 + this.warmUpTime + this.maxRecordedTime);
         });
@@ -512,13 +544,13 @@ class ProfilerRun {
         );
 
         this.opcodes.opcodes = {};
-        this.blockIds.blockIds = {};
+        this.refactorings.refactorings = {};
         Object.entries(json.opcodes).forEach(([opcode, data]) => {
             this.opcodes.opcodes[opcode] = Object.assign(new StatView(), data);
         });
 
-        Object.entries(json.blockIds).forEach(([opcode, data]) => {
-            this.blockIds.blockIds[opcode] = Object.assign(new StatView(), data);
+        Object.entries(json.refactorings).forEach(([opcode, data]) => {
+            this.refactorings.refactorings[opcode] = Object.assign(new StatView(), data);
         });
 
         this.frameTable.render();
@@ -553,8 +585,8 @@ const runBenchmark = function () {
             .innerText = progress.complete;
     }).on(storage);
 
-    let warmUpTime = 4000;
-    let maxRecordedTime = 6000;
+    let warmUpTime = 1000;
+    let maxRecordedTime = 2000;
 
     if (location.hash) {
         const split = location.hash.substring(1).split(',');
@@ -563,6 +595,8 @@ const runBenchmark = function () {
         }
         maxRecordedTime = Number(split[2] || '0') || 6000;
     }
+
+    maxRecordedTime = 1000;
 
     new ProfilerRun({
         vm,
