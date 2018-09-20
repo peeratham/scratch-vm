@@ -3,6 +3,10 @@ const Scratch = window.Scratch = window.Scratch || {};
 const ASSET_SERVER = 'https://cdn.assets.scratch.mit.edu/';
 const PROJECT_SERVER = 'https://cdn.projects.scratch.mit.edu/';
 
+
+const LOCAL_ASSET_SERVER = 'http://localhost:8000/';
+const LOCAL_PROJECT_SERVER = 'http://localhost:8000/';
+
 const SLOW = .1;
 
 const projectInput = document.querySelector('input');
@@ -35,7 +39,17 @@ const loadProject = function () {
  */
 const getProjectUrl = function (asset) {
     const assetIdParts = asset.assetId.split('.');
-    const assetUrlParts = [PROJECT_SERVER, 'internalapi/project/', assetIdParts[0], '/get/'];
+    const assetUrlParts = [LOCAL_PROJECT_SERVER, 'internalapi/project/', assetIdParts[0], '/get/'];
+    if (assetIdParts[1]) {
+        assetUrlParts.push(assetIdParts[1]);
+    }
+    return assetUrlParts.join('');
+};
+
+
+const getLocalProjectUrl = function (asset) {
+    const assetIdParts = asset.assetId.split('.');
+    const assetUrlParts = [LOCAL_PROJECT_SERVER,assetIdParts[0]+'.sb3_FILES/', 'project.json'];
     if (assetIdParts[1]) {
         assetUrlParts.push(assetIdParts[1]);
     }
@@ -54,6 +68,17 @@ const getAssetUrl = function (asset) {
         '.',
         asset.dataFormat,
         '/get/'
+    ];
+    return assetUrlParts.join('');
+};
+
+const getLocalAssetUrl = function (asset) {
+    const assetUrlParts = [
+        LOCAL_ASSET_SERVER,
+        location.hash.substring(1).split(",")[0]+'.sb3_FILES/',
+        asset.assetId,
+        '.',
+        asset.dataFormat
     ];
     return assetUrlParts.join('');
 };
@@ -284,6 +309,23 @@ class Opcodes {
     }
 }
 
+class BlockIds {
+    constructor (profiler) {
+        this.blockFunctionId = profiler.idByName('blockFunction');
+
+        this.blockIds = {};
+    }
+
+    update (id, selfTime, totalTime, arg) {
+        if (id === this.blockFunctionId) {
+            if (!this.blockIds[arg]) {
+                this.blockIds[arg] = new StatView(arg);
+            }
+            this.blockIds[arg].update(selfTime, totalTime);
+        }
+    }
+}
+
 class OpcodeTable extends StatTable {
     constructor (options) {
         super(options);
@@ -306,6 +348,33 @@ class OpcodeTable extends StatTable {
     isSlow (key) {
         const blockFunctionTotalTime = this.frames.frames[this.profiler.idByName('blockFunction')].totalTime;
         const rowTotalTime = this.opcodes.opcodes[key].totalTime;
+        const percentOfRun = rowTotalTime / blockFunctionTotalTime;
+        return percentOfRun > SLOW;
+    }
+}
+
+class BlockIdTable extends StatTable {
+    constructor (options) {
+        super(options);
+
+        this.profiler = options.profiler;
+        this.blockIds = options.blockIds;
+        this.frames = options.frames;
+    }
+
+    keys () {
+        const keys = Object.keys(this.blockIds.blockIds);
+        keys.sort();
+        return keys;
+    }
+
+    viewOf (key) {
+        return this.blockIds.blockIds[key];
+    }
+
+    isSlow (key) {
+        const blockFunctionTotalTime = this.frames.frames[this.profiler.idByName('blockFunction')].totalTime;
+        const rowTotalTime = this.blockIds.blockIds[key].totalTime;
         const percentOfRun = rowTotalTime / blockFunctionTotalTime;
         return percentOfRun > SLOW;
     }
@@ -350,6 +419,17 @@ class ProfilerRun {
             frames
         });
 
+        const blockIds = this.blockIds = new BlockIds(profiler);
+        this.blockIdTable = new BlockIdTable({
+            table: document
+                .getElementsByClassName('profile-count-blockid-table')[0]
+                .getElementsByTagName('tbody')[0],
+
+            profiler,
+            blockIds,
+            frames
+        });
+
         const stepId = profiler.idByName('Runtime._step');
         profiler.onFrame = ({id, selfTime, totalTime, arg}) => {
             if (id === stepId) {
@@ -357,6 +437,7 @@ class ProfilerRun {
             }
             runningStats.update(id, selfTime, totalTime, arg);
             opcodes.update(id, selfTime, totalTime, arg);
+            blockIds.update(id, selfTime, totalTime, arg);
             frames.update(id, selfTime, totalTime, arg);
         };
     }
@@ -385,17 +466,21 @@ class ProfilerRun {
                 this.vm.stopAll();
                 clearTimeout(this.vm.runtime._steppingInterval);
 
-                console.log(this.vm.runtime.profiler.blockIdRecords);
-                
+                let failures = null;
+                failures = Object.keys(this.vm.runtime.profiler.blockIdRecords).filter(k => k.startsWith("_assertion_failed"));
+                console.log(failures);
+
                 this.vm.runtime.profiler = null;
 
                 this.frameTable.render();
                 this.opcodeTable.render();
+                this.blockIdTable.render();
 
                 window.parent.postMessage({
                     type: 'BENCH_MESSAGE_COMPLETE',
                     frames: this.frames.frames,
-                    opcodes: this.opcodes.opcodes
+                    opcodes: this.opcodes.opcodes,
+                    blockIds: this.blockIds.blockIds
                 }, '*');
 
                 setShareLink({
@@ -405,7 +490,8 @@ class ProfilerRun {
                         recordingTime: this.maxRecordedTime
                     },
                     frames: this.frames.frames,
-                    opcodes: this.opcodes.opcodes
+                    opcodes: this.opcodes.opcodes,
+                    blockIds: this.blockIds.blockIds
                 });
             }, 100 + this.warmUpTime + this.maxRecordedTime);
         });
@@ -426,12 +512,18 @@ class ProfilerRun {
         );
 
         this.opcodes.opcodes = {};
+        this.blockIds.blockIds = {};
         Object.entries(json.opcodes).forEach(([opcode, data]) => {
             this.opcodes.opcodes[opcode] = Object.assign(new StatView(), data);
         });
 
+        Object.entries(json.blockIds).forEach(([opcode, data]) => {
+            this.blockIds.blockIds[opcode] = Object.assign(new StatView(), data);
+        });
+
         this.frameTable.render();
         this.opcodeTable.render();
+        this.blockIdTable.render();
     }
 }
 
@@ -442,16 +534,16 @@ class ProfilerRun {
 const runBenchmark = function () {
     // Lots of global variables to make debugging easier
     // Instantiate the VM.
-
     const vm = new window.VirtualMachine();
     Scratch.vm = vm;
 
-    vm.setTurboMode(true);
+    vm.setTurboMode(false);  //turbo
 
     const storage = new ScratchStorage(); /* global ScratchStorage */
     const AssetType = storage.AssetType;
-    storage.addWebSource([AssetType.Project], getProjectUrl);
-    storage.addWebSource([AssetType.ImageVector, AssetType.ImageBitmap, AssetType.Sound], getAssetUrl);
+
+    storage.addWebSource([AssetType.Project], getLocalProjectUrl);
+    storage.addWebSource([AssetType.ImageVector, AssetType.ImageBitmap, AssetType.Sound], getLocalAssetUrl);
     vm.attachStorage(storage);
 
     new LoadingProgress(progress => {

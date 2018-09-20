@@ -506,76 +506,27 @@ window.onload = function () {
     suite = new BenchSuite();
 
     suite.add(new BenchFixture({
-        projectId: 130041250,
+        projectId: 216105416,
         warmUpTime: 0,
         recordingTime: 2000
     }));
 
     suite.add(new BenchFixture({
-        projectId: 130041250,
-        warmUpTime: 4000,
-        recordingTime: 6000
-    }));
-
-    suite.add(new BenchFixture({
-        projectId: 14844969,
+        projectId: 247507535,
         warmUpTime: 0,
         recordingTime: 2000
     }));
 
     suite.add(new BenchFixture({
-        projectId: 14844969,
-        warmUpTime: 1000,
-        recordingTime: 6000
-    }));
-
-    suite.add(new BenchFixture({
-        projectId: 173918262,
+        projectId: 247520139,
         warmUpTime: 0,
-        recordingTime: 5000
+        recordingTime: 2000
     }));
 
-    suite.add(new BenchFixture({
-        projectId: 173918262,
-        warmUpTime: 5000,
-        recordingTime: 5000
-    }));
+    
 
-    suite.add(new BenchFixture({
-        projectId: 155128646,
-        warmUpTime: 0,
-        recordingTime: 5000
-    }));
 
-    suite.add(new BenchFixture({
-        projectId: 155128646,
-        warmUpTime: 5000,
-        recordingTime: 5000
-    }));
-
-    suite.add(new BenchFixture({
-        projectId: 89811578,
-        warmUpTime: 0,
-        recordingTime: 5000
-    }));
-
-    suite.add(new BenchFixture({
-        projectId: 89811578,
-        warmUpTime: 5000,
-        recordingTime: 5000
-    }));
-
-    suite.add(new BenchFixture({
-        projectId: 139193539,
-        warmUpTime: 0,
-        recordingTime: 5000
-    }));
-
-    suite.add(new BenchFixture({
-        projectId: 139193539,
-        warmUpTime: 5000,
-        recordingTime: 5000
-    }));
+   
 
     // TODO: #1322
     // Error: Cannot create monitor for target that cannot be found by name
@@ -606,9 +557,11 @@ window.onload = function () {
 
     };
 
-    standard(219313833); // sensing_touching benchmark
-    standard(236115215); // touching color benchmark
-    standard(238750909); // bob ross painting (heavy pen stamp)
+
+
+    // standard(219313833); // sensing_touching benchmark
+    // standard(236115215); // touching color benchmark
+    // standard(238750909); // bob ross painting (heavy pen stamp)
 
     const frame = document.getElementsByTagName('iframe')[0];
     const runner = new BenchRunner({frame, suite});
