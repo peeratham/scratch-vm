@@ -342,12 +342,11 @@ class Opcodes {
 class Refactorings {
     constructor (profiler) {
         this.blockIdRecords = profiler.blockIdRecords;
-
         this.refactorings = {};
     }
 
-    update (id, selfTime, totalTime, arg) {
-        arg = "Extract Variable";
+    update () {
+        let arg = "Extract Variable";
         // if (id === this.blockFunctionId) {
             if (!this.refactorings[arg]) {
                 this.refactorings[arg] = new IdStatView(arg);
@@ -469,7 +468,7 @@ class ProfilerRun {
             }
             runningStats.update(id, selfTime, totalTime, arg);
             opcodes.update(id, selfTime, totalTime, arg);
-            refactorings.update(id, selfTime, totalTime, arg);
+            refactorings.update();
             frames.update(id, selfTime, totalTime, arg);
         };
     }
@@ -480,6 +479,8 @@ class ProfilerRun {
         window.parent.postMessage({
             type: 'BENCH_MESSAGE_LOADING'
         }, '*');
+
+        
 
         this.vm.on('workspaceUpdate', () => {
             setTimeout(() => {
@@ -499,6 +500,7 @@ class ProfilerRun {
                 clearTimeout(this.vm.runtime._steppingInterval);
 
                 let failures = null;
+                console.log(this.vm.runtime.profiler.blockIdRecords);
                 failures = Object.keys(this.vm.runtime.profiler.blockIdRecords).filter(k => k.startsWith("_assertion_failed"));
                 console.log(failures);
 
@@ -550,7 +552,7 @@ class ProfilerRun {
         });
 
         Object.entries(json.refactorings).forEach(([opcode, data]) => {
-            this.refactorings.refactorings[opcode] = Object.assign(new StatView(), data);
+            this.refactorings.refactorings[opcode] = Object.assign(new IdStatView(), data);
         });
 
         this.frameTable.render();

@@ -116,8 +116,10 @@ class BenchUtil {
     }
 
     renderResults (results) {
+        const jsonResults = btoa(JSON.stringify(results));
+        console.log(jsonResults);
         this.setFrameLocation(
-            `index.html#view/${btoa(JSON.stringify(results))}`
+            `index.html#view/${jsonResults}`
         );
     }
 }
@@ -133,11 +135,12 @@ const BENCH_STATUS = {
 };
 
 class BenchResult {
-    constructor ({fixture, status = BENCH_STATUS.INACTIVE, frames = null, opcodes = null}) {
+    constructor ({fixture, status = BENCH_STATUS.INACTIVE, frames = null, opcodes = null, refactorings=null}) {
         this.fixture = fixture;
         this.status = status;
         this.frames = frames;
         this.opcodes = opcodes;
+        this.refactorings = refactorings;
     }
 }
 
@@ -165,7 +168,8 @@ class BenchFixture extends Emitter {
                     fixture: this,
                     status: BENCH_STATUS.STARTING,
                     frames: null,
-                    opcodes: null
+                    opcodes: null,
+                    refactorings: null
                 };
                 if (message.type === BENCH_MESSAGE_TYPE.INACTIVE) {
                     result.status = BENCH_STATUS.RESUME;
@@ -179,6 +183,7 @@ class BenchFixture extends Emitter {
                     result.status = BENCH_STATUS.COMPLETE;
                     result.frames = message.frames;
                     result.opcodes = message.opcodes;
+                    result.refactorings = message.refactorings;
                     resolve(new BenchResult(result));
                     util.benchStream.off('message', null, this);
                 }
@@ -311,6 +316,7 @@ class BenchResultView {
 
     render (newResult = this.result, compareResult = this.compare) {
         const newResultFrames = (newResult.frames ? newResult.frames : []);
+
         const blockFunctionFrame = newResultFrames
             .find(frame => frame.name === 'blockFunction');
         const stepThreadsInnerFrame = newResultFrames
@@ -368,10 +374,14 @@ class BenchResultView {
                 </div>
             </a>`;
         }
+
         this.dom.innerHTML = `
             <div class="fixture-project">
                 <a href="${url}" target="bench_frame"
                     >${newResult.fixture.projectId}</a>
+            </div>
+            <div>
+                ${JSON.stringify(newResult.refactorings)}
             </div>
             <div class="result-status">
                 <div>${stepThreadsInnerFrame ? `steps/s` : ''}</div>
@@ -505,22 +515,22 @@ window.download = function (_this) {
 window.onload = function () {
     suite = new BenchSuite();
 
-    suite.add(new BenchFixture({
-        projectId: 216105416,
-        warmUpTime: 0,
-        recordingTime: 2000
-    }));
+    // suite.add(new BenchFixture({
+    //     projectId: 216105416,
+    //     warmUpTime: 0,
+    //     recordingTime: 2000
+    // }));
 
-    suite.add(new BenchFixture({
-        projectId: 247507535,
-        warmUpTime: 0,
-        recordingTime: 2000
-    }));
+    // suite.add(new BenchFixture({
+    //     projectId: 247507535,
+    //     warmUpTime: 0,
+    //     recordingTime: 2000
+    // }));
 
     suite.add(new BenchFixture({
         projectId: 247520139,
         warmUpTime: 0,
-        recordingTime: 2000
+        recordingTime: 3000
     }));
 
     
