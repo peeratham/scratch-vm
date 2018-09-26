@@ -83,7 +83,7 @@ p {
 }
 
 #blocks {
-    border: 5px solid black;
+    border: 3px solid black;
     display: block;
     width: 800px;
     height: 300px;

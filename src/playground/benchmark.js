@@ -781,6 +781,46 @@ const runBenchmark = function () {
         }
     });
 
+    // refactorables
+    const data = {
+        "refactorable_A": {
+          "id": "refactorable_A",
+          "transforms": [
+            {
+              "type": "VarDeclareAction",
+              "value": "<create var='a'/>"
+            }
+          ]
+        },
+        "refactorable_B": {
+          "id": "refactorable_B",
+          "transforms": [
+            {
+              "type": "BlockCreateAction",
+              "value": "<xml></xml>"
+            }
+          ]
+        }
+      };
+    var keys = Object.keys(data);
+    const refactorables = document.getElementById('refactorables');
+    for (let i = 0; i < keys.length; i++) {    
+        const refactorable = document.createElement('option');
+        refactorable.setAttribute('value', data[keys[i]].id);
+        
+        refactorable.appendChild(
+            document.createTextNode(data[keys[i]].id)
+        );
+
+        refactorables.appendChild(refactorable);
+    }
+
+    refactorables.onchange = function () {
+        vm.emit('BLOCK_TRANSFORM', data[this.value]);
+        workspace.blockTransformer.doTransform(data[this.value]);
+        console.log(data[this.value]);
+    };
+
     // Run threads
     vm.start();
 };
