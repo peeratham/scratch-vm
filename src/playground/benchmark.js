@@ -36,24 +36,24 @@ const loadProject = function () {
 };
 
 const getProgramXml = function () {
-        let targets = "";
-        const stageVariables = Scratch.vm.runtime.getTargetForStage().variables;
-        for (let i = 0; i < Scratch.vm.runtime.targets.length; i++) {
-            const currTarget = Scratch.vm.runtime.targets[i];
-            const currBlocks = currTarget.blocks._blocks;
-            const variableMap = currTarget.variables;
-            const variables = Object.keys(variableMap).map(k => variableMap[k]);
-            const xmlString = `<${currTarget.isStage? "stage ": "sprite "} name="${currTarget.getName()}"><xml><variables>${variables.map(v => v.toXML()).join()}</variables>${currTarget.blocks.toXML()}</xml></${currTarget.isStage? "stage": "sprite"}>`;
-            
-            //assembling
-            targets += xmlString;
-        }
-        var str = `<program>${targets}</program>`;
-        str = str.replace(/\s+/g, ' '); // Keep only one space character
-        str = str.replace(/>\s*/g, '>');  // Remove space after >
-        str = str.replace(/\s*</g, '<');  // Remove space before <
+    let targets = "";
+    const stageVariables = Scratch.vm.runtime.getTargetForStage().variables;
+    for (let i = 0; i < Scratch.vm.runtime.targets.length; i++) {
+        const currTarget = Scratch.vm.runtime.targets[i];
+        const currBlocks = currTarget.blocks._blocks;
+        const variableMap = currTarget.variables;
+        const variables = Object.keys(variableMap).map(k => variableMap[k]);
+        const xmlString = `<${currTarget.isStage ? "stage " : "sprite "} name="${currTarget.getName()}"><xml><variables>${variables.map(v => v.toXML()).join()}</variables>${currTarget.blocks.toXML()}</xml></${currTarget.isStage ? "stage" : "sprite"}>`;
 
-        return str;
+        //assembling
+        targets += xmlString;
+    }
+    var str = `<program>${targets}</program>`;
+    str = str.replace(/\s+/g, ' '); // Keep only one space character
+    str = str.replace(/>\s*/g, '>');  // Remove space after >
+    str = str.replace(/\s*</g, '<');  // Remove space before <
+
+    return str;
 }
 
 /**
@@ -72,7 +72,7 @@ const getProjectUrl = function (asset) {
 
 const getLocalProjectUrl = function (asset) {
     const assetIdParts = asset.assetId.split('.');
-    const assetUrlParts = [LOCAL_PROJECT_SERVER,assetIdParts[0]+'.sb3_FILES/', 'project.json'];
+    const assetUrlParts = [LOCAL_PROJECT_SERVER, assetIdParts[0] + '.sb3_FILES/', 'project.json'];
     if (assetIdParts[1]) {
         assetUrlParts.push(assetIdParts[1]);
     }
@@ -98,7 +98,7 @@ const getAssetUrl = function (asset) {
 const getLocalAssetUrl = function (asset) {
     const assetUrlParts = [
         LOCAL_ASSET_SERVER,
-        location.hash.substring(1).split(",")[0]+'.sb3_FILES/',
+        location.hash.substring(1).split(",")[0] + '.sb3_FILES/',
         asset.assetId,
         '.',
         asset.dataFormat
@@ -107,13 +107,13 @@ const getLocalAssetUrl = function (asset) {
 };
 
 class LoadingProgress {
-    constructor (callback) {
+    constructor(callback) {
         this.total = 0;
         this.complete = 0;
         this.callback = callback;
     }
 
-    on (storage) {
+    on(storage) {
         const _this = this;
         const _load = storage.webHelper.load;
         storage.webHelper.load = function (...args) {
@@ -130,7 +130,7 @@ class LoadingProgress {
 }
 
 class StatTable {
-    constructor ({table, keys, viewOf, isSlow}) {
+    constructor({ table, keys, viewOf, isSlow }) {
         this.table = table;
         if (keys) {
             this.keys = keys;
@@ -143,7 +143,7 @@ class StatTable {
         }
     }
 
-    render () {
+    render() {
         const table = this.table;
         Array.from(table.children)
             .forEach(node => table.removeChild(node));
@@ -158,20 +158,20 @@ class StatTable {
 }
 
 class StatView {
-    constructor (name) {
+    constructor(name) {
         this.name = name;
         this.executions = 0;
         this.selfTime = 0;
         this.totalTime = 0;
     }
 
-    update (selfTime, totalTime) {
+    update(selfTime, totalTime) {
         this.executions++;
         this.selfTime += selfTime;
         this.totalTime += totalTime;
     }
 
-    render ({table, isSlow}) {
+    render({ table, isSlow }) {
         const row = document.createElement('tr');
         let cell = document.createElement('td');
         cell.innerText = this.name;
@@ -204,7 +204,7 @@ class StatView {
 }
 
 class IdStatView {
-    constructor (name) {    //should be name of refactoring
+    constructor(name) {    //should be name of refactoring
         this.name = name;
         this.failures = [];
     }
@@ -213,7 +213,7 @@ class IdStatView {
         this.failures = blockIdRecords;
     }
 
-    render ({table, isSlow}) {
+    render({ table, isSlow }) {
         const row = document.createElement('tr');
         let cell = document.createElement('td');
         cell.innerText = this.name;
@@ -234,7 +234,7 @@ class IdStatView {
 }
 
 class RunningStats {
-    constructor (profiler) {
+    constructor(profiler) {
         this.stepThreadsInnerId = profiler.idByName('Sequencer.stepThreads#inner');
         this.blockFunctionId = profiler.idByName('blockFunction');
         this.stpeThreadsId = profiler.idByName('Sequencer.stepThreads');
@@ -246,7 +246,7 @@ class RunningStats {
         };
     }
 
-    update (id, selfTime, totalTime) {
+    update(id, selfTime, totalTime) {
         if (id === this.stpeThreadsId) {
             this.recordedTime += totalTime;
         } else if (id === this.stepThreadsInnerId) {
@@ -260,7 +260,7 @@ class RunningStats {
 const WORK_TIME = 0.75;
 
 class RunningStatsView {
-    constructor ({runningStats, maxRecordedTime, dom}) {
+    constructor({ runningStats, maxRecordedTime, dom }) {
         this.recordedTimeDom =
             dom.getElementsByClassName('profile-count-amount-recorded')[0];
         this.stepsLoopedDom =
@@ -273,14 +273,14 @@ class RunningStatsView {
         this.runningStats = runningStats;
     }
 
-    render () {
+    render() {
         const {
             runningStats,
             recordedTimeDom,
             stepsLoopedDom,
             blocksExecutedDom
         } = this;
-        const {executed} = runningStats;
+        const { executed } = runningStats;
         const fractionWorked = runningStats.recordedTime / this.maxWorkedTime;
         recordedTimeDom.innerText = `${(fractionWorked * 100).toFixed(1)} %`;
         stepsLoopedDom.innerText = executed.steps;
@@ -289,13 +289,13 @@ class RunningStatsView {
 }
 
 class Frames {
-    constructor (profiler) {
+    constructor(profiler) {
         this.profiler = profiler;
 
         this.frames = [];
     }
 
-    update (id, selfTime, totalTime) {
+    update(id, selfTime, totalTime) {
         if (!this.frames[id]) {
             this.frames[id] = new StatView(this.profiler.nameById(id));
         }
@@ -321,38 +321,38 @@ const trackSlowFrames = [
 ];
 
 class FramesTable extends StatTable {
-    constructor (options) {
+    constructor(options) {
         super(options);
 
         this.profiler = options.profiler;
         this.frames = options.frames;
     }
 
-    keys () {
+    keys() {
         const keys = Object.keys(this.frames.frames)
             .map(id => this.profiler.nameById(Number(id)));
         keys.sort((a, b) => frameOrder.indexOf(a) - frameOrder.indexOf(b));
         return keys;
     }
 
-    viewOf (key) {
+    viewOf(key) {
         return this.frames.frames[this.profiler.idByName(key)];
     }
 
-    isSlow (key, frame) {
+    isSlow(key, frame) {
         return (trackSlowFrames.indexOf(key) > 0 &&
-        frame.selfTime / frame.totalTime > SLOW);
+            frame.selfTime / frame.totalTime > SLOW);
     }
 }
 
 class Opcodes {
-    constructor (profiler) {
+    constructor(profiler) {
         this.blockFunctionId = profiler.idByName('blockFunction');
 
         this.opcodes = {};
     }
 
-    update (id, selfTime, totalTime, arg) {
+    update(id, selfTime, totalTime, arg) {
         if (id === this.blockFunctionId) {
             if (!this.opcodes[arg]) {
                 this.opcodes[arg] = new StatView(arg);
@@ -363,25 +363,25 @@ class Opcodes {
 }
 
 class Refactorings {
-    constructor (profiler) {
+    constructor(profiler) {
         this.blockIdRecords = profiler.blockIdRecords;
         this.refactorings = {};
     }
 
-    update () {
+    update() {
         let arg = "Extract Variable";
         // if (id === this.blockFunctionId) {
-            if (!this.refactorings[arg]) {
-                this.refactorings[arg] = new IdStatView(arg);
-            }
-            const failures = Object.keys(this.blockIdRecords).filter(k => k.startsWith("_assertion_failed"));
-            this.refactorings[arg].update(failures);
+        if (!this.refactorings[arg]) {
+            this.refactorings[arg] = new IdStatView(arg);
+        }
+        const failures = Object.keys(this.blockIdRecords).filter(k => k.startsWith("_assertion_failed"));
+        this.refactorings[arg].update(failures);
         // }
     }
 }
 
 class OpcodeTable extends StatTable {
-    constructor (options) {
+    constructor(options) {
         super(options);
 
         this.profiler = options.profiler;
@@ -389,17 +389,17 @@ class OpcodeTable extends StatTable {
         this.frames = options.frames;
     }
 
-    keys () {
+    keys() {
         const keys = Object.keys(this.opcodes.opcodes);
         keys.sort();
         return keys;
     }
 
-    viewOf (key) {
+    viewOf(key) {
         return this.opcodes.opcodes[key];
     }
 
-    isSlow (key) {
+    isSlow(key) {
         const blockFunctionTotalTime = this.frames.frames[this.profiler.idByName('blockFunction')].totalTime;
         const rowTotalTime = this.opcodes.opcodes[key].totalTime;
         const percentOfRun = rowTotalTime / blockFunctionTotalTime;
@@ -408,7 +408,7 @@ class OpcodeTable extends StatTable {
 }
 
 class RefactoringTable extends StatTable {
-    constructor (options) {
+    constructor(options) {
         super(options);
 
         this.profiler = options.profiler;
@@ -416,17 +416,17 @@ class RefactoringTable extends StatTable {
         this.frames = options.frames;
     }
 
-    keys () {
+    keys() {
         const keys = Object.keys(this.refactorings.refactorings);
         keys.sort();
         return keys;
     }
 
-    viewOf (key) {
+    viewOf(key) {
         return this.refactorings.refactorings[key];
     }
 
-    isSlow (key) {
+    isSlow(key) {
         const blockFunctionTotalTime = this.frames.frames[this.profiler.idByName('blockFunction')].totalTime;
         const rowTotalTime = this.refactorings.refactorings[key].totalTime;
         const percentOfRun = rowTotalTime / blockFunctionTotalTime;
@@ -435,7 +435,7 @@ class RefactoringTable extends StatTable {
 }
 
 class ProfilerRun {
-    constructor ({vm, maxRecordedTime, warmUpTime}) {
+    constructor({ vm, maxRecordedTime, warmUpTime }) {
         this.vm = vm;
         this.maxRecordedTime = maxRecordedTime;
         this.warmUpTime = warmUpTime;
@@ -485,7 +485,7 @@ class ProfilerRun {
         });
 
         const stepId = profiler.idByName('Runtime._step');
-        profiler.onFrame = ({id, selfTime, totalTime, arg}) => {
+        profiler.onFrame = ({ id, selfTime, totalTime, arg }) => {
             if (id === stepId) {
                 runningStatsView.render();
             }
@@ -496,23 +496,23 @@ class ProfilerRun {
         };
     }
 
-    run () {
+    run() {
         this.projectId = loadProject();
 
         window.parent.postMessage({
             type: 'BENCH_MESSAGE_LOADING'
         }, '*');
 
-        
+
 
         this.vm.on('workspaceUpdate', () => {
 
             setTimeout(() => {
                 const url = "http://localhost:8080/refactor";
-                var blockXmlPromise = new Promise(function(resolve, reject) {
+                var blockXmlPromise = new Promise(function (resolve, reject) {
                     resolve(getProgramXml());
                 });
-                blockXmlPromise.then(function(xml) {
+                blockXmlPromise.then(function (xml) {
                     fetch(url, {
                         method: "POST", // *GET, POST, PUT, DELETE, etc.
                         mode: "cors", // no-cors, cors, *same-origin
@@ -522,12 +522,12 @@ class ProfilerRun {
                         },
                         body: xml, // body data type must match "Content-Type" header
                     })
-                    .then(response => response.json())
-                    .then(function(json){
-                        console.log(JSON.stringify(json));
-                    });    
+                        .then(response => response.json())
+                        .then(function (json) {
+                            console.log(JSON.stringify(json));
+                        });
                 });
-            }, 100);            
+            }, 100);
 
             setTimeout(() => {
                 window.parent.postMessage({
@@ -577,8 +577,8 @@ class ProfilerRun {
         });
     }
 
-    render (json) {
-        const {fixture} = json;
+    render(json) {
+        const { fixture } = json;
         document.querySelector('[type=text]').value = [
             fixture.projectId,
             fixture.warmUpTime,
@@ -659,20 +659,20 @@ const runBenchmark = function () {
         scrollbars: true,
         sounds: true,
         zoom: {
-        controls: true,
-        wheel: true,
-        startScale: 0.6,
-        maxScale: 4,
-        minScale: 0.25,
-        scaleSpeed: 1.1
+            controls: true,
+            wheel: true,
+            startScale: 0.6,
+            maxScale: 4,
+            minScale: 0.25,
+            scaleSpeed: 1.1
         },
         colours: {
-        fieldShadow: 'rgba(255, 255, 255, 0.3)',
-        dragShadowOpacity: 0.6
+            fieldShadow: 'rgba(255, 255, 255, 0.3)',
+            dragShadowOpacity: 0.6
         }
     });
     Scratch.workspace = workspace;
-    
+
 
     vm.setTurboMode(false);  //turbo
 
@@ -783,31 +783,61 @@ const runBenchmark = function () {
 
     // refactorables
     const data = {
-        "refactorable_A": {
-          "id": "refactorable_A",
-          "transforms": [
-            {
-              "type": "VarDeclareAction",
-              "value": "<create var='a'/>"
-            }
-          ]
+        "populate1": {
+            "id": "populate1",
+            "transforms": [
+                {
+                    "type": "BlockCreateAction",
+                    "block_xml": "<xml><block type='event_whenflagclicked' id='$qzcZRovdQ?/.].mHhQ%' x='63' y='47'><next><block type='motion_movesteps' id='`}x+~AAoYR)K8AgT$Jf('><value name='STEPS'><shadow xmlns='' type='math_number' id='i+t2}H;AK6]xvomm2L!1'><field name='NUM'>10</field></shadow><block type='operator_add' id='S$ke,BdE{(*byS^NF/)b'><value name='NUM1'><shadow type='math_number' id='o~ikTh6`@9$!=hU?{Otd'><field name='NUM'>1</field></shadow></value><value name='NUM2'><shadow type='math_number' id='VM|FKX@^G%((_CX^/}Rv'><field name='NUM'>2</field></shadow></value></block></value><next><block type='motion_pointindirection' id='y~KDiyE4SpAoS|xtDI#F'><value name='DIRECTION'><shadow xmlns='' type='math_angle' id=']^p?ASOD|3xORhegAmiI'><field name='NUM'>90</field></shadow><block type='operator_add' id='+Ms7c^/)F$:n+qMV6*E,'><value name='NUM1'><shadow type='math_number' id='kA@IM!WF#oWw!X6(hI_f'><field name='NUM'>1</field></shadow></value><value name='NUM2'><shadow type='math_number' id='/qx#_A6HA`8r9rL3Fe~n'><field name='NUM'>2</field></shadow></value></block></value></block></next></block></next></block></xml>"
+                }
+            ]
         },
-        "refactorable_B": {
-          "id": "refactorable_B",
-          "transforms": [
-            {
-              "type": "BlockCreateAction",
-              "value": "<xml></xml>"
-            }
-          ]
+        "refactorable_1": {
+            "id": "refactorable_1",
+            "hint": ["S$ke,BdE{(*byS^NF/)b", "+Ms7c^/)F$:n+qMV6*E,"],
+            "transforms": [
+                {
+                    "type": "VarDeclareAction",
+                    "name": "temp",
+                    "id": "#|v/]b+8CRJ+!`mFil#`"
+                },
+                {
+                    "type": "BlockCreateAction",
+                    "block_xml": "<xml><block type='data_setvariableto' id='.jEVI^80b1[Kk+^ni0h3' x='65' y='47'><field name='VARIABLE' id='#|v/]b+8CRJ+!`mFil#`' variabletype=''>temp</field><value name='VALUE'><shadow type='text' id='W{jlO2Bf#n^2;)rKT29J'><field name='TEXT'>0</field></shadow><block type='operator_add' id=']Hz9eaJ%IUgQ@}f8Y?fo'><value name='NUM1'><shadow type='math_number' id='meWh7}$dz~KJmp,8290^'><field name='NUM'>1</field></shadow></value><value name='NUM2'><shadow type='math_number' id='1uQ`q#5f6Y,.p4$nQ-12'><field name='NUM'>2</field></shadow></value></block></value></block></xml>",
+                    "comment" : "temp=expr"
+                },
+                {
+                    "type": "InsertBlockAction",
+                    "target_block":"`}x+~AAoYR)K8AgT$Jf(",
+                    "inserted_block":".jEVI^80b1[Kk+^ni0h3"
+                },
+                {
+                    "type": "BlockCreateAction",
+                    "block_xml": "<xml><block type='data_variable' id='Hj%m.nh?Y_%+}f/N5Yto' x='-58' y='-51'><field name='VARIABLE' id='#|v/]b+8CRJ+!`mFil#`' variabletype=''>temp</field></block></xml>"
+                },
+                {
+                    "type": "ReplaceAction",
+                    "target_block": "S$ke,BdE{(*byS^NF/)b",
+                    "replace_with": "Hj%m.nh?Y_%+}f/N5Yto"
+                },
+                {
+                    "type": "BlockCreateAction",
+                    "block_xml": "<xml><block type='data_variable' id='temp_id_2' x='-58' y='-51'><field name='VARIABLE' id='#|v/]b+8CRJ+!`mFil#`' variabletype=''>temp</field></block></xml>"
+                },
+                {
+                    "type": "ReplaceAction",
+                    "target_block": "+Ms7c^/)F$:n+qMV6*E,",
+                    "replace_with": "temp_id_2"
+                }
+            ]
         }
-      };
+    };
     var keys = Object.keys(data);
     const refactorables = document.getElementById('refactorables');
-    for (let i = 0; i < keys.length; i++) {    
+    for (let i = 0; i < keys.length; i++) {
         const refactorable = document.createElement('option');
         refactorable.setAttribute('value', data[keys[i]].id);
-        
+
         refactorable.appendChild(
             document.createTextNode(data[keys[i]].id)
         );
@@ -831,7 +861,7 @@ const runBenchmark = function () {
  */
 const renderBenchmarkData = function (json) {
     const vm = new window.VirtualMachine();
-    new ProfilerRun({vm}).render(json);
+    new ProfilerRun({ vm }).render(json);
     setShareLink(json);
 };
 
