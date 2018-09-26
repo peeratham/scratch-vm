@@ -33,6 +33,27 @@ const loadProject = function () {
     return id;
 };
 
+const getProgramXml = function () {
+        let targets = "";
+        const stageVariables = Scratch.vm.runtime.getTargetForStage().variables;
+        for (let i = 0; i < Scratch.vm.runtime.targets.length; i++) {
+            const currTarget = Scratch.vm.runtime.targets[i];
+            const currBlocks = currTarget.blocks._blocks;
+            const variableMap = currTarget.variables;
+            const variables = Object.keys(variableMap).map(k => variableMap[k]);
+            const xmlString = `<${currTarget.isStage? "stage ": "sprite "} name="${currTarget.getName()}"><xml><variables>${variables.map(v => v.toXML()).join()}</variables>${currTarget.blocks.toXML()}</xml></${currTarget.isStage? "stage": "sprite"}>`;
+            
+            //assembling
+            targets += xmlString;
+        }
+        var str = `<program>${targets}</program>`;
+        str = str.replace(/\s+/g, ' '); // Keep only one space character
+        str = str.replace(/>\s*/g, '>');  // Remove space after >
+        str = str.replace(/\s*</g, '<');  // Remove space before <
+
+        return str;
+}
+
 /**
  * @param {Asset} asset - calculate a URL for this asset.
  * @returns {string} a URL to download a project file.
@@ -483,6 +504,29 @@ class ProfilerRun {
         
 
         this.vm.on('workspaceUpdate', () => {
+
+            setTimeout(() => {
+                const url = "http://localhost:8080/refactor";
+                var promise = new Promise(function(resolve, reject) {
+                    resolve(getProgramXml());
+                });
+                promise.then(function(xml) {
+                    fetch(url, {
+                        method: "POST", // *GET, POST, PUT, DELETE, etc.
+                        mode: "cors", // no-cors, cors, *same-origin
+                        cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+                        headers: {
+                            "Content-Type": "text/xml"
+                        },
+                        body: xml, // body data type must match "Content-Type" header
+                    })
+                    .then(response => response.json())
+                    .then(function(json){
+                        console.log(JSON.stringify(json));
+                    });    
+                });
+            }, 100);            
+
             setTimeout(() => {
                 window.parent.postMessage({
                     type: 'BENCH_MESSAGE_WARMING_UP'
