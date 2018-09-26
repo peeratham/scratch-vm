@@ -81,3 +81,11 @@ p {
     height: 4em;
     background-color: #dddddd;
 }
+
+#blocks {
+    border: 5px solid black;
+    display: block;
+    width: 800px;
+    height: 300px;
+    padding: 5px;
+}

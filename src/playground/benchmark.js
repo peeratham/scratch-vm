@@ -11,6 +11,8 @@ const SLOW = .1;
 
 const projectInput = document.querySelector('input');
 
+
+
 document.querySelector('.run')
     .addEventListener('click', () => {
         window.location.hash = projectInput.value;
@@ -507,10 +509,10 @@ class ProfilerRun {
 
             setTimeout(() => {
                 const url = "http://localhost:8080/refactor";
-                var promise = new Promise(function(resolve, reject) {
+                var blockXmlPromise = new Promise(function(resolve, reject) {
                     resolve(getProgramXml());
                 });
-                promise.then(function(xml) {
+                blockXmlPromise.then(function(xml) {
                     fetch(url, {
                         method: "POST", // *GET, POST, PUT, DELETE, etc.
                         mode: "cors", // no-cors, cors, *same-origin
@@ -614,6 +616,63 @@ const runBenchmark = function () {
     // Instantiate the VM.
     const vm = new window.VirtualMachine();
     Scratch.vm = vm;
+
+    // Receipt of new block XML for the selected target.
+    vm.on('workspaceUpdate', data => {
+        workspace.clear();
+        const dom = window.Blockly.Xml.textToDom(data.xml);
+        window.Blockly.Xml.domToWorkspace(dom, workspace);
+    });
+
+    // Receipt of new list of targets, selected target update.
+    const selectedTarget = document.getElementById('selectedTarget');
+    vm.on('targetsUpdate', data => {
+        // Clear select box.
+        while (selectedTarget.firstChild) {
+            selectedTarget.removeChild(selectedTarget.firstChild);
+        }
+        // Generate new select box.
+        for (let i = 0; i < data.targetList.length; i++) {
+            const targetOption = document.createElement('option');
+            targetOption.setAttribute('value', data.targetList[i].id);
+            // If target id matches editingTarget id, select it.
+            if (data.targetList[i].id === data.editingTarget) {
+                targetOption.setAttribute('selected', 'selected');
+            }
+            targetOption.appendChild(
+                document.createTextNode(data.targetList[i].name)
+            );
+            selectedTarget.appendChild(targetOption);
+        }
+    });
+    selectedTarget.onchange = function () {
+        vm.setEditingTarget(this.value);
+    };
+
+    // instantiate scratch-blocks
+    const workspace = window.Blockly.inject('blocks', {
+        comments: true,
+        disable: false,
+        collapse: false,
+        media: '../playground/media/',
+        readOnly: false,
+        scrollbars: true,
+        sounds: true,
+        zoom: {
+        controls: true,
+        wheel: true,
+        startScale: 0.6,
+        maxScale: 4,
+        minScale: 0.25,
+        scaleSpeed: 1.1
+        },
+        colours: {
+        fieldShadow: 'rgba(255, 255, 255, 0.3)',
+        dragShadowOpacity: 0.6
+        }
+    });
+    Scratch.workspace = workspace;
+    
 
     vm.setTurboMode(false);  //turbo
 

@@ -380,9 +380,6 @@ class BenchResultView {
                 <a href="${url}" target="bench_frame"
                     >${newResult.fixture.projectId}</a>
             </div>
-            <div>
-                ${JSON.stringify(newResult.refactorings)}
-            </div>
             <div class="result-status">
                 <div>${stepThreadsInnerFrame ? `steps/s` : ''}</div>
                 <div>${blockFunctionFrame ? `blocks/s` : statusName}</div>
@@ -397,6 +394,10 @@ class BenchResultView {
             <div class="">
             Run for ${newResult.fixture.recordingTime / 1000} seconds after
             ${newResult.fixture.warmUpTime / 1000} seconds
+            </div>
+
+            <div class="">
+                ${newResult.refactorings? JSON.stringify(newResult.refactorings["Extract Variable"].failures): ''}
             </div>
         `;
 
@@ -529,7 +530,7 @@ window.onload = function () {
 
     suite.add(new BenchFixture({
         projectId: 247520139,
-        warmUpTime: 0,
+        warmUpTime: 1000,
         recordingTime: 3000
     }));
 
