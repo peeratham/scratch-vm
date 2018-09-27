@@ -209,13 +209,15 @@ class Refactorings {
         this.refactorings = {};
     }
 
-    update() {
+    update(blockIdRecords) {
         let arg = "Extract Variable";
         if (!this.refactorings[arg]) {
             this.refactorings[arg] = new IdStatView(arg);
         }
-        const failures = Object.keys(this.blockIdRecords).filter(k => k.startsWith("_assertion_failed"));
+
+        const failures = Object.keys(blockIdRecords).filter(k => k.startsWith("_assertion_failed"));
         this.refactorings[arg].update(failures);
+
         // }
     }
 }
@@ -275,7 +277,6 @@ class ProfilerRun {
                 runningStatsView.render();
             }
             runningStats.update(id, selfTime, totalTime, arg);
-            refactorings.update();
         };
     }
 
@@ -304,8 +305,13 @@ class ProfilerRun {
             });
 
             this.runRefactoring()
-                .then(report => this.runProfiler(report))
                 .then(report => {
+                    return this.runProfiler(report);
+                })
+                .then(report => {
+                    console.log("prepare final report");
+                    this.refactorings.update(this.profiler.blockIdRecords);
+                    this.invalidBlockExecIdTable.render();
                     console.log(report);
                 });
         });
@@ -384,15 +390,12 @@ class ProfilerRun {
                 this.vm.stopAll();
                 clearTimeout(this.vm.runtime._steppingInterval);
 
-                console.log(this.vm.runtime.profiler.blockIdRecords);
                 let failures = Object.keys(this.vm.runtime.profiler.blockIdRecords).filter(k => k.startsWith("_assertion_failed"));
                 if (failures.length > 0) {
                     report.success = false;
                 }
 
                 this.vm.runtime.profiler = null;
-
-                this.invalidBlockExecIdTable.render();
 
                 window.parent.postMessage({
                     type: 'BENCH_MESSAGE_COMPLETE',
