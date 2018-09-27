@@ -370,7 +370,6 @@ class Refactorings {
 
     update() {
         let arg = "Extract Variable";
-        // if (id === this.blockFunctionId) {
         if (!this.refactorings[arg]) {
             this.refactorings[arg] = new IdStatView(arg);
         }
@@ -511,12 +510,17 @@ class ProfilerRun {
             }else{
                 return;
             }
-            this.runRefactoring().then(()=>this.runProfiler());
+            this.runRefactoring()
+            .then(report => this.runProfiler(report))
+            .then(report => {
+                console.log(report);
+            });
         });
     }
 
     runRefactoring() {
         const url = "http://localhost:8080/refactor";
+        const testReport = {'projectId':'id', 'type':'extract_var','size_after':5, 'exp_size':4,'duplications':2};
         return new Promise(function(resolve, reject) {
             
             resolve(getProgramXml());
@@ -533,22 +537,23 @@ class ProfilerRun {
                 });
           }).then(response => response.json())
           .then((json) => {
-            return renderRefactorables(json, Scratch.vm, Scratch.workspace);
+            return renderRefactorables(json, Scratch.vm, Scratch.workspace,testReport);
           }).then(function (selectRefactorableDom) {
                 for (let i = 0; i < selectRefactorableDom.length; i++) {
                     selectRefactorableDom.selectedIndex = i;
                     selectRefactorableDom.dispatchEvent(new Event('change'));
                 }
+
             }).then( () => {
                 return new Promise(function(resolve, reject) {
-                    resolve(true);
+                    resolve(testReport);
                 });
             });
     }
 
-    runProfiler() {
+    runProfiler(report) {
           //TODO: apply refactoring, before greenFlag
-          setTimeout(() => {
+        setTimeout(() => {
             window.parent.postMessage({
                 type: 'BENCH_MESSAGE_WARMING_UP'
             }, '*');
@@ -560,39 +565,49 @@ class ProfilerRun {
             }, '*');
             this.vm.runtime.profiler = this.profiler;
         }, 100 + this.warmUpTime);
-        setTimeout(() => {
-            this.vm.stopAll();
-            clearTimeout(this.vm.runtime._steppingInterval);
 
-            let failures = null;
-            console.log(this.vm.runtime.profiler.blockIdRecords);
-            failures = Object.keys(this.vm.runtime.profiler.blockIdRecords).filter(k => k.startsWith("_assertion_failed"));
-            console.log(failures);
+        return new Promise((resolve, reject)=> {
+            setTimeout(() => {
+                this.vm.stopAll();
+                clearTimeout(this.vm.runtime._steppingInterval);
 
-            this.vm.runtime.profiler = null;
+                let failures = null;
+                console.log(this.vm.runtime.profiler.blockIdRecords);
+                failures = Object.keys(this.vm.runtime.profiler.blockIdRecords).filter(k => k.startsWith("_assertion_failed"));
+                console.log(failures);
+                if(failures.length>0){
+                    report.success = false;
+                }
 
-            this.frameTable.render();
-            this.opcodeTable.render();
-            this.blockIdTable.render();
+                this.vm.runtime.profiler = null;
 
-            window.parent.postMessage({
-                type: 'BENCH_MESSAGE_COMPLETE',
-                frames: this.frames.frames,
-                opcodes: this.opcodes.opcodes,
-                refactorings: this.refactorings.refactorings
-            }, '*');
+                this.frameTable.render();
+                this.opcodeTable.render();
+                this.blockIdTable.render();
 
-            setShareLink({
-                fixture: {
-                    projectId: this.projectId,
-                    warmUpTime: this.warmUpTime,
-                    recordingTime: this.maxRecordedTime
-                },
-                frames: this.frames.frames,
-                opcodes: this.opcodes.opcodes,
-                refactorings: this.refactorings.refactorings
-            });
-        }, 100 + this.warmUpTime + this.maxRecordedTime);
+                window.parent.postMessage({
+                    type: 'BENCH_MESSAGE_COMPLETE',
+                    frames: this.frames.frames,
+                    opcodes: this.opcodes.opcodes,
+                    refactorings: this.refactorings.refactorings
+                }, '*');
+
+                setShareLink({
+                    fixture: {
+                        projectId: this.projectId,
+                        warmUpTime: this.warmUpTime,
+                        recordingTime: this.maxRecordedTime
+                    },
+                    frames: this.frames.frames,
+                    opcodes: this.opcodes.opcodes,
+                    refactorings: this.refactorings.refactorings
+                });
+
+                resolve(report);
+            }, 100 + this.warmUpTime + this.maxRecordedTime);
+    });
+        
+        
     }
 
     render(json) {
@@ -803,7 +818,7 @@ const runBenchmark = function () {
     vm.start();
 };
 
-const renderRefactorables = function (data, vm, workspace) {
+const renderRefactorables = function (data, vm, workspace, report) {
     var keys = Object.keys(data);
     const refactorables = document.getElementById('refactorables');
     for (let i = 0; i < keys.length; i++) {
@@ -818,8 +833,14 @@ const renderRefactorables = function (data, vm, workspace) {
     }
 
     refactorables.onchange = function () {
-        vm.emit('BLOCK_TRANSFORM', data[this.value]);
+        // vm.emit('BLOCK_TRANSFORM', data[this.value]);
+        //TODO: BlockTransformer.doTransform
+        //START timer
+        const t0 = performance.now();
         workspace.blockTransformer.doTransform(data[this.value]);
+        //STOP timer
+        const t1 = performance.now();
+        report.resp_time = t1-t0;
         console.log(data[this.value]);
     };
 
