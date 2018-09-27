@@ -181,8 +181,6 @@ class BenchFixture extends Emitter {
                     result.status = BENCH_STATUS.ACTIVE;
                 } else if (message.type === BENCH_MESSAGE_TYPE.COMPLETE) {
                     result.status = BENCH_STATUS.COMPLETE;
-                    result.frames = message.frames;
-                    result.opcodes = message.opcodes;
                     result.refactorings = message.refactorings;
                     resolve(new BenchResult(result));
                     util.benchStream.off('message', null, this);
@@ -397,7 +395,7 @@ class BenchResultView {
             </div>
 
             <div class="">
-                ${newResult.refactorings? JSON.stringify(newResult.refactorings["Extract Variable"].failures): ''}
+                ${newResult.refactorings? JSON.stringify(newResult.refactorings): ''}
             </div>
         `;
 

@@ -93,8 +93,9 @@ class LoadingProgress {
 }
 
 class StatTable {
-    constructor({ table, keys, viewOf, isSlow }) {
+    constructor({ table, keys, viewOf, isSlow, container}) {
         this.table = table;
+        this.container = container;
         if (keys) {
             this.keys = keys;
         }
@@ -112,6 +113,7 @@ class StatTable {
             .forEach(node => table.removeChild(node));
         const keys = this.keys();
         for (const key of keys) {
+            this.viewOf(key).renderSimpleJson(this.container);
             this.viewOf(key).render({
                 table,
                 isSlow: frame => this.isSlow(key, frame)
@@ -130,6 +132,10 @@ class IdStatView {
 
     update(blockIdRecords) {
         this.failures = blockIdRecords;
+    }
+
+    renderSimpleJson(div){
+        div.innerHTML = this.name + this.failures;
     }
 
     render({ table, isSlow }) {
@@ -266,7 +272,7 @@ class ProfilerRun {
             table: document
                 .getElementsByClassName('profile-count-refactoring-table')[0]
                 .getElementsByTagName('tbody')[0],
-
+            container: document.getElementById('profile-refactoring-result'),
             profiler,
             refactorings
         });
@@ -312,6 +318,10 @@ class ProfilerRun {
                     console.log("prepare final report");
                     this.refactorings.update(this.profiler.blockIdRecords);
                     this.invalidBlockExecIdTable.render();
+                    window.parent.postMessage({
+                        type: 'BENCH_MESSAGE_COMPLETE',
+                        refactorings: this.refactorings.refactorings
+                    }, '*');
                     console.log(report);
                 });
         });
@@ -397,10 +407,7 @@ class ProfilerRun {
 
                 this.vm.runtime.profiler = null;
 
-                window.parent.postMessage({
-                    type: 'BENCH_MESSAGE_COMPLETE',
-                    refactorings: this.refactorings.refactorings
-                }, '*');
+               
 
                 setShareLink({
                     fixture: {
