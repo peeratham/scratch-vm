@@ -1,13 +1,6 @@
 const Scratch = window.Scratch = window.Scratch || {};
-
-const ASSET_SERVER = 'https://cdn.assets.scratch.mit.edu/';
-const PROJECT_SERVER = 'https://cdn.projects.scratch.mit.edu/';
-
-
 const LOCAL_ASSET_SERVER = 'http://localhost:8000/';
 const LOCAL_PROJECT_SERVER = 'http://localhost:8000/';
-
-const SLOW = .1;
 
 const projectInput = document.querySelector('input');
 
@@ -56,42 +49,12 @@ const getProgramXml = function () {
     return str;
 }
 
-/**
- * @param {Asset} asset - calculate a URL for this asset.
- * @returns {string} a URL to download a project file.
- */
-const getProjectUrl = function (asset) {
-    const assetIdParts = asset.assetId.split('.');
-    const assetUrlParts = [LOCAL_PROJECT_SERVER, 'internalapi/project/', assetIdParts[0], '/get/'];
-    if (assetIdParts[1]) {
-        assetUrlParts.push(assetIdParts[1]);
-    }
-    return assetUrlParts.join('');
-};
-
-
 const getLocalProjectUrl = function (asset) {
     const assetIdParts = asset.assetId.split('.');
     const assetUrlParts = [LOCAL_PROJECT_SERVER, assetIdParts[0] + '.sb3_FILES/', 'project.json'];
     if (assetIdParts[1]) {
         assetUrlParts.push(assetIdParts[1]);
     }
-    return assetUrlParts.join('');
-};
-
-/**
- * @param {Asset} asset - calculate a URL for this asset.
- * @returns {string} a URL to download a project asset (PNG, WAV, etc.)
- */
-const getAssetUrl = function (asset) {
-    const assetUrlParts = [
-        ASSET_SERVER,
-        'internalapi/asset/',
-        asset.assetId,
-        '.',
-        asset.dataFormat,
-        '/get/'
-    ];
     return assetUrlParts.join('');
 };
 
@@ -157,51 +120,7 @@ class StatTable {
     }
 }
 
-class StatView {
-    constructor(name) {
-        this.name = name;
-        this.executions = 0;
-        this.selfTime = 0;
-        this.totalTime = 0;
-    }
 
-    update(selfTime, totalTime) {
-        this.executions++;
-        this.selfTime += selfTime;
-        this.totalTime += totalTime;
-    }
-
-    render({ table, isSlow }) {
-        const row = document.createElement('tr');
-        let cell = document.createElement('td');
-        cell.innerText = this.name;
-        row.appendChild(cell);
-
-        if (isSlow(this)) {
-            row.setAttribute('class', 'slow');
-        }
-
-        cell = document.createElement('td');
-        // Truncate selfTime. Value past the microsecond are floating point
-        // noise.
-        this.selfTime = Math.floor(this.selfTime * 1000) / 1000;
-        cell.innerText = (this.selfTime / 1000).toPrecision(3);
-        row.appendChild(cell);
-
-        cell = document.createElement('td');
-        // Truncate totalTime. Value past the microsecond are floating point
-        // noise.
-        this.totalTime = Math.floor(this.totalTime * 1000) / 1000;
-        cell.innerText = (this.totalTime / 1000).toPrecision(3);
-        row.appendChild(cell);
-
-        cell = document.createElement('td');
-        cell.innerText = this.executions;
-        row.appendChild(cell);
-
-        table.appendChild(row);
-    }
-}
 
 class IdStatView {
     constructor(name) {    //should be name of refactoring
@@ -224,10 +143,6 @@ class IdStatView {
         cell = document.createElement('td');
         cell.innerText = JSON.stringify(this.failures);
         row.appendChild(cell);
-
-        if (isSlow(this)) {
-            row.setAttribute('class', 'slow');
-        }
 
         table.appendChild(row);
     }
@@ -288,80 +203,6 @@ class RunningStatsView {
     }
 }
 
-class Frames {
-    constructor(profiler) {
-        this.profiler = profiler;
-
-        this.frames = [];
-    }
-
-    update(id, selfTime, totalTime) {
-        if (!this.frames[id]) {
-            this.frames[id] = new StatView(this.profiler.nameById(id));
-        }
-        this.frames[id].update(selfTime, totalTime);
-    }
-}
-
-const frameOrder = [
-    'blockFunction',
-    'execute',
-    'Sequencer.stepThread',
-    'Sequencer.stepThreads#inner',
-    'Sequencer.stepThreads',
-    'RenderWebGL.draw',
-    'Runtime._step'
-];
-
-const trackSlowFrames = [
-    'Sequencer.stepThreads',
-    'Sequencer.stepThreads#inner',
-    'Sequencer.stepThread',
-    'execute'
-];
-
-class FramesTable extends StatTable {
-    constructor(options) {
-        super(options);
-
-        this.profiler = options.profiler;
-        this.frames = options.frames;
-    }
-
-    keys() {
-        const keys = Object.keys(this.frames.frames)
-            .map(id => this.profiler.nameById(Number(id)));
-        keys.sort((a, b) => frameOrder.indexOf(a) - frameOrder.indexOf(b));
-        return keys;
-    }
-
-    viewOf(key) {
-        return this.frames.frames[this.profiler.idByName(key)];
-    }
-
-    isSlow(key, frame) {
-        return (trackSlowFrames.indexOf(key) > 0 &&
-            frame.selfTime / frame.totalTime > SLOW);
-    }
-}
-
-class Opcodes {
-    constructor(profiler) {
-        this.blockFunctionId = profiler.idByName('blockFunction');
-
-        this.opcodes = {};
-    }
-
-    update(id, selfTime, totalTime, arg) {
-        if (id === this.blockFunctionId) {
-            if (!this.opcodes[arg]) {
-                this.opcodes[arg] = new StatView(arg);
-            }
-            this.opcodes[arg].update(selfTime, totalTime);
-        }
-    }
-}
-
 class Refactorings {
     constructor(profiler) {
         this.blockIdRecords = profiler.blockIdRecords;
@@ -379,40 +220,12 @@ class Refactorings {
     }
 }
 
-class OpcodeTable extends StatTable {
-    constructor(options) {
-        super(options);
-
-        this.profiler = options.profiler;
-        this.opcodes = options.opcodes;
-        this.frames = options.frames;
-    }
-
-    keys() {
-        const keys = Object.keys(this.opcodes.opcodes);
-        keys.sort();
-        return keys;
-    }
-
-    viewOf(key) {
-        return this.opcodes.opcodes[key];
-    }
-
-    isSlow(key) {
-        const blockFunctionTotalTime = this.frames.frames[this.profiler.idByName('blockFunction')].totalTime;
-        const rowTotalTime = this.opcodes.opcodes[key].totalTime;
-        const percentOfRun = rowTotalTime / blockFunctionTotalTime;
-        return percentOfRun > SLOW;
-    }
-}
-
 class RefactoringTable extends StatTable {
     constructor(options) {
         super(options);
 
         this.profiler = options.profiler;
         this.refactorings = options.refactorings;
-        this.frames = options.frames;
     }
 
     keys() {
@@ -423,13 +236,6 @@ class RefactoringTable extends StatTable {
 
     viewOf(key) {
         return this.refactorings.refactorings[key];
-    }
-
-    isSlow(key) {
-        const blockFunctionTotalTime = this.frames.frames[this.profiler.idByName('blockFunction')].totalTime;
-        const rowTotalTime = this.refactorings.refactorings[key].totalTime;
-        const percentOfRun = rowTotalTime / blockFunctionTotalTime;
-        return percentOfRun > SLOW;
     }
 }
 
@@ -453,36 +259,14 @@ class ProfilerRun {
             maxRecordedTime
         });
 
-        const frames = this.frames = new Frames(profiler);
-        this.frameTable = new FramesTable({
-            table: document
-                .getElementsByClassName('profile-count-frame-table')[0]
-                .getElementsByTagName('tbody')[0],
-
-            profiler,
-            frames
-        });
-
-        const opcodes = this.opcodes = new Opcodes(profiler);
-        this.opcodeTable = new OpcodeTable({
-            table: document
-                .getElementsByClassName('profile-count-opcode-table')[0]
-                .getElementsByTagName('tbody')[0],
-
-            profiler,
-            opcodes,
-            frames
-        });
-
         const refactorings = this.refactorings = new Refactorings(profiler);
-        this.blockIdTable = new RefactoringTable({
+        this.invalidBlockExecIdTable = new RefactoringTable({
             table: document
                 .getElementsByClassName('profile-count-refactoring-table')[0]
                 .getElementsByTagName('tbody')[0],
 
             profiler,
-            refactorings,
-            frames
+            refactorings
         });
 
         const stepId = profiler.idByName('Runtime._step');
@@ -491,9 +275,8 @@ class ProfilerRun {
                 runningStatsView.render();
             }
             runningStats.update(id, selfTime, totalTime, arg);
-            opcodes.update(id, selfTime, totalTime, arg);
             refactorings.update();
-            frames.update(id, selfTime, totalTime, arg);
+            // console.log('update');
         };
     }
 
@@ -510,12 +293,43 @@ class ProfilerRun {
             }else{
                 return;
             }
+
+            //TODO: FOR EACH REFACTORABLE
+            /**
+             * this.sendAnalysisRequest()
+             * then create initial report from server resp
+             * then process each refactorable (apply, profile, and update report)
+             */
+            this.sendAnalysisRequest().then(jsonResp=>{
+                
+            });
+
             this.runRefactoring()
             .then(report => this.runProfiler(report))
             .then(report => {
                 console.log(report);
             });
         });
+    }
+
+    sendAnalysisRequest() {
+        const url = "http://localhost:8080/refactor";
+        const testReport = {'projectId':'id', 'type':'extract_var','size_after':5, 'exp_size':4,'duplications':2};
+        return new Promise(function(resolve, reject) {
+            
+            resolve(getProgramXml());
+          
+          }).then(function(xml) {
+            return fetch(url, {
+                    method: "POST", // *GET, POST, PUT, DELETE, etc.
+                    mode: "cors", // no-cors, cors, *same-origin
+                    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+                    headers: {
+                        "Content-Type": "text/xml"
+                    },
+                    body: xml, // body data type must match "Content-Type" header
+                });
+          }).then(response => response.json());
     }
 
     runRefactoring() {
@@ -570,25 +384,19 @@ class ProfilerRun {
             setTimeout(() => {
                 this.vm.stopAll();
                 clearTimeout(this.vm.runtime._steppingInterval);
-
-                let failures = null;
+                
                 console.log(this.vm.runtime.profiler.blockIdRecords);
-                failures = Object.keys(this.vm.runtime.profiler.blockIdRecords).filter(k => k.startsWith("_assertion_failed"));
-                console.log(failures);
+                let failures = Object.keys(this.vm.runtime.profiler.blockIdRecords).filter(k => k.startsWith("_assertion_failed"));
                 if(failures.length>0){
                     report.success = false;
                 }
 
                 this.vm.runtime.profiler = null;
 
-                this.frameTable.render();
-                this.opcodeTable.render();
-                this.blockIdTable.render();
+                this.invalidBlockExecIdTable.render();
 
                 window.parent.postMessage({
                     type: 'BENCH_MESSAGE_COMPLETE',
-                    frames: this.frames.frames,
-                    opcodes: this.opcodes.opcodes,
                     refactorings: this.refactorings.refactorings
                 }, '*');
 
@@ -598,8 +406,6 @@ class ProfilerRun {
                         warmUpTime: this.warmUpTime,
                         recordingTime: this.maxRecordedTime
                     },
-                    frames: this.frames.frames,
-                    opcodes: this.opcodes.opcodes,
                     refactorings: this.refactorings.refactorings
                 });
 
@@ -618,25 +424,11 @@ class ProfilerRun {
             fixture.recordingTime
         ].join(',');
 
-        this.frames.frames = json.frames.map(
-            frame => Object.assign(new StatView(), frame, {
-                name: this.profiler.nameById(this.profiler.idByName(frame.name))
-            })
-        );
-
-        this.opcodes.opcodes = {};
         this.refactorings.refactorings = {};
-        Object.entries(json.opcodes).forEach(([opcode, data]) => {
-            this.opcodes.opcodes[opcode] = Object.assign(new StatView(), data);
-        });
 
         Object.entries(json.refactorings).forEach(([opcode, data]) => {
             this.refactorings.refactorings[opcode] = Object.assign(new IdStatView(), data);
         });
-
-        this.frameTable.render();
-        this.opcodeTable.render();
-        this.blockIdTable.render();
     }
 }
 
@@ -833,15 +625,12 @@ const renderRefactorables = function (data, vm, workspace, report) {
     }
 
     refactorables.onchange = function () {
-        // vm.emit('BLOCK_TRANSFORM', data[this.value]);
-        //TODO: BlockTransformer.doTransform
         //START timer
         const t0 = performance.now();
         workspace.blockTransformer.doTransform(data[this.value]);
         //STOP timer
         const t1 = performance.now();
         report.resp_time = t1-t0;
-        console.log(data[this.value]);
     };
 
     return refactorables;
