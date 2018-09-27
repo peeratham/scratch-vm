@@ -93,7 +93,7 @@ class LoadingProgress {
 }
 
 class StatTable {
-    constructor({ table, keys, viewOf, isSlow, container}) {
+    constructor({ table, keys, viewOf, isSlow, container }) {
         this.table = table;
         this.container = container;
         if (keys) {
@@ -127,15 +127,39 @@ class StatTable {
 class IdStatView {
     constructor(name) {    //should be name of refactoring
         this.name = name;
+        this.report = { 'projectId': 123456, 'type': 'extract_var', 'size_after': 5, 'exp_size': 4, 'duplications': 2};
         this.failures = [];
     }
 
     update(blockIdRecords) {
         this.failures = blockIdRecords;
+        if (this.failures.length > 0) {
+            this.report.success = false;
+            this.report.failed_location = this.failures;
+        }
     }
 
-    renderSimpleJson(div){
-        div.innerHTML = this.name + this.failures;
+    renderSimpleJson(div) {
+        let txt = "<table border='0'>"
+        // header
+        txt += "<thead>";
+        txt += "<tr class='profile-count-refactoring-head'>";
+        for (var key in this.report) {
+            txt += "<th>" + key + "</th>";
+        }
+        txt += "</tr>";
+        txt += "<thead>";
+        // body
+        txt += "<tr>";
+        for (var key in this.report) {
+            txt += "<td>" + this.report[key] + "</td>";
+        }
+        txt += "</tr>";
+
+        txt += "</table>";
+        div.innerHTML = txt;
+        // this.name + this.failures;
+
     }
 
     render({ table, isSlow }) {
@@ -253,6 +277,8 @@ class ProfilerRun {
         this.maxRecordedTime = maxRecordedTime;
         this.warmUpTime = warmUpTime;
 
+        this.report = {};
+
         this.firstTimeWorkspaceUpdate = true;
 
         vm.runtime.enableProfiling();
@@ -306,15 +332,17 @@ class ProfilerRun {
              * then create initial report from server resp
              * then process each refactorable (apply, profile, and update report)
              */
-            this.sendAnalysisRequest().then(jsonResp => {
-
-            });
-
-            this.runRefactoring()
-                .then(report => {
-                    return this.runProfiler(report);
-                })
-                .then(report => {
+            this.sendAnalysisRequest().then(json => {
+                //TODO: record roundtrip for whole project analysis request
+                return renderRefactorables(json, Scratch.vm, Scratch.workspace, {});
+            }).then(function (selectRefactorableDom) {
+                for (let i = 0; i < selectRefactorableDom.length; i++) {
+                    selectRefactorableDom.selectedIndex = i;
+                    selectRefactorableDom.dispatchEvent(new Event('change'));
+                }
+            }).then(() => {
+                    return this.runProfiler();
+            }).then(() => {
                     console.log("prepare final report");
                     this.refactorings.update(this.profiler.blockIdRecords);
                     this.invalidBlockExecIdTable.render();
@@ -322,7 +350,7 @@ class ProfilerRun {
                         type: 'BENCH_MESSAGE_COMPLETE',
                         refactorings: this.refactorings.refactorings
                     }, '*');
-                    console.log(report);
+                    
                 });
         });
     }
@@ -347,40 +375,7 @@ class ProfilerRun {
         }).then(response => response.json());
     }
 
-    runRefactoring() {
-        const url = "http://localhost:8080/refactor";
-        const testReport = { 'projectId': 'id', 'type': 'extract_var', 'size_after': 5, 'exp_size': 4, 'duplications': 2 };
-        return new Promise(function (resolve, reject) {
-
-            resolve(getProgramXml());
-
-        }).then(function (xml) {
-            return fetch(url, {
-                method: "POST", // *GET, POST, PUT, DELETE, etc.
-                mode: "cors", // no-cors, cors, *same-origin
-                cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-                headers: {
-                    "Content-Type": "text/xml"
-                },
-                body: xml, // body data type must match "Content-Type" header
-            });
-        }).then(response => response.json())
-            .then((json) => {
-                return renderRefactorables(json, Scratch.vm, Scratch.workspace, testReport);
-            }).then(function (selectRefactorableDom) {
-                for (let i = 0; i < selectRefactorableDom.length; i++) {
-                    selectRefactorableDom.selectedIndex = i;
-                    selectRefactorableDom.dispatchEvent(new Event('change'));
-                }
-
-            }).then(() => {
-                return new Promise(function (resolve, reject) {
-                    resolve(testReport);
-                });
-            });
-    }
-
-    runProfiler(report) {
+    runProfiler() {
         //TODO: apply refactoring, before greenFlag
         setTimeout(() => {
             window.parent.postMessage({
@@ -402,23 +397,11 @@ class ProfilerRun {
 
                 let failures = Object.keys(this.vm.runtime.profiler.blockIdRecords).filter(k => k.startsWith("_assertion_failed"));
                 if (failures.length > 0) {
-                    report.success = false;
+                    this.report.success = false;
                 }
 
                 this.vm.runtime.profiler = null;
-
-               
-
-                setShareLink({
-                    fixture: {
-                        projectId: this.projectId,
-                        warmUpTime: this.warmUpTime,
-                        recordingTime: this.maxRecordedTime
-                    },
-                    refactorings: this.refactorings.refactorings
-                });
-
-                resolve(report);
+                resolve(this.report);
             }, 100 + this.warmUpTime + this.maxRecordedTime);
         });
 
@@ -435,8 +418,8 @@ class ProfilerRun {
 
         this.refactorings.refactorings = {};
 
-        Object.entries(json.refactorings).forEach(([opcode, data]) => {
-            this.refactorings.refactorings[opcode] = Object.assign(new IdStatView(), data);
+        Object.entries(json.refactorings).forEach(([key, data]) => {
+            this.refactorings.refactorings[key] = Object.assign(new IdStatView(), data);
         });
     }
 }
