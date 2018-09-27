@@ -276,7 +276,6 @@ class ProfilerRun {
             }
             runningStats.update(id, selfTime, totalTime, arg);
             refactorings.update();
-            // console.log('update');
         };
     }
 
@@ -288,9 +287,9 @@ class ProfilerRun {
         }, '*');
 
         this.vm.on('workspaceUpdate', () => {
-            if(this.firstTimeWorkspaceUpdate){
+            if (this.firstTimeWorkspaceUpdate) {
                 this.firstTimeWorkspaceUpdate = false;
-            }else{
+            } else {
                 return;
             }
 
@@ -300,73 +299,73 @@ class ProfilerRun {
              * then create initial report from server resp
              * then process each refactorable (apply, profile, and update report)
              */
-            this.sendAnalysisRequest().then(jsonResp=>{
-                
+            this.sendAnalysisRequest().then(jsonResp => {
+
             });
 
             this.runRefactoring()
-            .then(report => this.runProfiler(report))
-            .then(report => {
-                console.log(report);
-            });
+                .then(report => this.runProfiler(report))
+                .then(report => {
+                    console.log(report);
+                });
         });
     }
 
     sendAnalysisRequest() {
         const url = "http://localhost:8080/refactor";
-        const testReport = {'projectId':'id', 'type':'extract_var','size_after':5, 'exp_size':4,'duplications':2};
-        return new Promise(function(resolve, reject) {
-            
+        const testReport = { 'projectId': 'id', 'type': 'extract_var', 'size_after': 5, 'exp_size': 4, 'duplications': 2 };
+        return new Promise(function (resolve, reject) {
+
             resolve(getProgramXml());
-          
-          }).then(function(xml) {
+
+        }).then(function (xml) {
             return fetch(url, {
-                    method: "POST", // *GET, POST, PUT, DELETE, etc.
-                    mode: "cors", // no-cors, cors, *same-origin
-                    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-                    headers: {
-                        "Content-Type": "text/xml"
-                    },
-                    body: xml, // body data type must match "Content-Type" header
-                });
-          }).then(response => response.json());
+                method: "POST", // *GET, POST, PUT, DELETE, etc.
+                mode: "cors", // no-cors, cors, *same-origin
+                cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+                headers: {
+                    "Content-Type": "text/xml"
+                },
+                body: xml, // body data type must match "Content-Type" header
+            });
+        }).then(response => response.json());
     }
 
     runRefactoring() {
         const url = "http://localhost:8080/refactor";
-        const testReport = {'projectId':'id', 'type':'extract_var','size_after':5, 'exp_size':4,'duplications':2};
-        return new Promise(function(resolve, reject) {
-            
+        const testReport = { 'projectId': 'id', 'type': 'extract_var', 'size_after': 5, 'exp_size': 4, 'duplications': 2 };
+        return new Promise(function (resolve, reject) {
+
             resolve(getProgramXml());
-          
-          }).then(function(xml) {
+
+        }).then(function (xml) {
             return fetch(url, {
-                    method: "POST", // *GET, POST, PUT, DELETE, etc.
-                    mode: "cors", // no-cors, cors, *same-origin
-                    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-                    headers: {
-                        "Content-Type": "text/xml"
-                    },
-                    body: xml, // body data type must match "Content-Type" header
-                });
-          }).then(response => response.json())
-          .then((json) => {
-            return renderRefactorables(json, Scratch.vm, Scratch.workspace,testReport);
-          }).then(function (selectRefactorableDom) {
+                method: "POST", // *GET, POST, PUT, DELETE, etc.
+                mode: "cors", // no-cors, cors, *same-origin
+                cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+                headers: {
+                    "Content-Type": "text/xml"
+                },
+                body: xml, // body data type must match "Content-Type" header
+            });
+        }).then(response => response.json())
+            .then((json) => {
+                return renderRefactorables(json, Scratch.vm, Scratch.workspace, testReport);
+            }).then(function (selectRefactorableDom) {
                 for (let i = 0; i < selectRefactorableDom.length; i++) {
                     selectRefactorableDom.selectedIndex = i;
                     selectRefactorableDom.dispatchEvent(new Event('change'));
                 }
 
-            }).then( () => {
-                return new Promise(function(resolve, reject) {
+            }).then(() => {
+                return new Promise(function (resolve, reject) {
                     resolve(testReport);
                 });
             });
     }
 
     runProfiler(report) {
-          //TODO: apply refactoring, before greenFlag
+        //TODO: apply refactoring, before greenFlag
         setTimeout(() => {
             window.parent.postMessage({
                 type: 'BENCH_MESSAGE_WARMING_UP'
@@ -380,14 +379,14 @@ class ProfilerRun {
             this.vm.runtime.profiler = this.profiler;
         }, 100 + this.warmUpTime);
 
-        return new Promise((resolve, reject)=> {
+        return new Promise((resolve, reject) => {
             setTimeout(() => {
                 this.vm.stopAll();
                 clearTimeout(this.vm.runtime._steppingInterval);
-                
+
                 console.log(this.vm.runtime.profiler.blockIdRecords);
                 let failures = Object.keys(this.vm.runtime.profiler.blockIdRecords).filter(k => k.startsWith("_assertion_failed"));
-                if(failures.length>0){
+                if (failures.length > 0) {
                     report.success = false;
                 }
 
@@ -411,9 +410,9 @@ class ProfilerRun {
 
                 resolve(report);
             }, 100 + this.warmUpTime + this.maxRecordedTime);
-    });
-        
-        
+        });
+
+
     }
 
     render(json) {
@@ -630,7 +629,7 @@ const renderRefactorables = function (data, vm, workspace, report) {
         workspace.blockTransformer.doTransform(data[this.value]);
         //STOP timer
         const t1 = performance.now();
-        report.resp_time = t1-t0;
+        report.resp_time = t1 - t0;
     };
 
     return refactorables;
