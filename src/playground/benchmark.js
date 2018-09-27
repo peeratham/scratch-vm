@@ -440,6 +440,8 @@ class ProfilerRun {
         this.maxRecordedTime = maxRecordedTime;
         this.warmUpTime = warmUpTime;
 
+        this.firstTimeWorkspaceUpdate = true;
+
         vm.runtime.enableProfiling();
         const profiler = this.profiler = vm.runtime.profiler;
         vm.runtime.profiler = null;
@@ -503,88 +505,95 @@ class ProfilerRun {
             type: 'BENCH_MESSAGE_LOADING'
         }, '*');
 
-
-
         this.vm.on('workspaceUpdate', () => {
-
-            setTimeout(() => {
-                const url = "http://localhost:8080/refactor";
-                var blockXmlPromise = new Promise(function (resolve, reject) {
-                    resolve(getProgramXml());
-                });
-                blockXmlPromise.then(function (xml) {
-                    fetch(url, {
-                        method: "POST", // *GET, POST, PUT, DELETE, etc.
-                        mode: "cors", // no-cors, cors, *same-origin
-                        cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-                        headers: {
-                            "Content-Type": "text/xml"
-                        },
-                        body: xml, // body data type must match "Content-Type" header
-                    })
-                        .then(response => response.json())
-                        .then(function (json) {
-                            console.log(JSON.stringify(json));
-                            return renderRefactorables(computed_refactorables,Scratch.vm,Scratch.workspace);
-                            //populate refactorables
-                            //then execute them in turn
-                        })
-                        .then(function(selectRefactorableDom){
-                            for (let i = 0; i < selectRefactorableDom.length; i++) {
-                                    selectRefactorableDom.selectedIndex = i;
-                                    selectRefactorableDom.dispatchEvent(new Event('change'));
-                            }
-                        });
-                });
-            }, 100);
-
-            //TODO: apply refactoring, before greenFlag
-            setTimeout(() => {
-                window.parent.postMessage({
-                    type: 'BENCH_MESSAGE_WARMING_UP'
-                }, '*');
-                this.vm.greenFlag();
-            }, 100);
-            setTimeout(() => {
-                window.parent.postMessage({
-                    type: 'BENCH_MESSAGE_ACTIVE'
-                }, '*');
-                this.vm.runtime.profiler = this.profiler;
-            }, 100 + this.warmUpTime);
-            setTimeout(() => {
-                this.vm.stopAll();
-                clearTimeout(this.vm.runtime._steppingInterval);
-
-                let failures = null;
-                console.log(this.vm.runtime.profiler.blockIdRecords);
-                failures = Object.keys(this.vm.runtime.profiler.blockIdRecords).filter(k => k.startsWith("_assertion_failed"));
-                console.log(failures);
-
-                this.vm.runtime.profiler = null;
-
-                this.frameTable.render();
-                this.opcodeTable.render();
-                this.blockIdTable.render();
-
-                window.parent.postMessage({
-                    type: 'BENCH_MESSAGE_COMPLETE',
-                    frames: this.frames.frames,
-                    opcodes: this.opcodes.opcodes,
-                    refactorings: this.refactorings.refactorings
-                }, '*');
-
-                setShareLink({
-                    fixture: {
-                        projectId: this.projectId,
-                        warmUpTime: this.warmUpTime,
-                        recordingTime: this.maxRecordedTime
-                    },
-                    frames: this.frames.frames,
-                    opcodes: this.opcodes.opcodes,
-                    refactorings: this.refactorings.refactorings
-                });
-            }, 100 + this.warmUpTime + this.maxRecordedTime);
+            if(this.firstTimeWorkspaceUpdate){
+                this.firstTimeWorkspaceUpdate = false;
+            }else{
+                return;
+            }
+            this.runRefactoring().then(()=>this.runProfiler());
         });
+    }
+
+    runRefactoring() {
+        const url = "http://localhost:8080/refactor";
+        return new Promise(function(resolve, reject) {
+            
+            resolve(getProgramXml());
+          
+          }).then(function(xml) {
+            return fetch(url, {
+                    method: "POST", // *GET, POST, PUT, DELETE, etc.
+                    mode: "cors", // no-cors, cors, *same-origin
+                    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+                    headers: {
+                        "Content-Type": "text/xml"
+                    },
+                    body: xml, // body data type must match "Content-Type" header
+                });
+          }).then(response => response.json())
+          .then((json) => {
+            console.log(JSON.stringify(json));
+            return renderRefactorables(computed_refactorables, Scratch.vm, Scratch.workspace);
+          }).then(function (selectRefactorableDom) {
+                for (let i = 0; i < selectRefactorableDom.length; i++) {
+                    selectRefactorableDom.selectedIndex = i;
+                    selectRefactorableDom.dispatchEvent(new Event('change'));
+                }
+            }).then( () => {
+                return new Promise(function(resolve, reject) {
+                    resolve(true);
+                });
+            });
+    }
+
+    runProfiler() {
+          //TODO: apply refactoring, before greenFlag
+          setTimeout(() => {
+            window.parent.postMessage({
+                type: 'BENCH_MESSAGE_WARMING_UP'
+            }, '*');
+            this.vm.greenFlag();
+        }, 100);
+        setTimeout(() => {
+            window.parent.postMessage({
+                type: 'BENCH_MESSAGE_ACTIVE'
+            }, '*');
+            this.vm.runtime.profiler = this.profiler;
+        }, 100 + this.warmUpTime);
+        setTimeout(() => {
+            this.vm.stopAll();
+            clearTimeout(this.vm.runtime._steppingInterval);
+
+            let failures = null;
+            console.log(this.vm.runtime.profiler.blockIdRecords);
+            failures = Object.keys(this.vm.runtime.profiler.blockIdRecords).filter(k => k.startsWith("_assertion_failed"));
+            console.log(failures);
+
+            this.vm.runtime.profiler = null;
+
+            this.frameTable.render();
+            this.opcodeTable.render();
+            this.blockIdTable.render();
+
+            window.parent.postMessage({
+                type: 'BENCH_MESSAGE_COMPLETE',
+                frames: this.frames.frames,
+                opcodes: this.opcodes.opcodes,
+                refactorings: this.refactorings.refactorings
+            }, '*');
+
+            setShareLink({
+                fixture: {
+                    projectId: this.projectId,
+                    warmUpTime: this.warmUpTime,
+                    recordingTime: this.maxRecordedTime
+                },
+                frames: this.frames.frames,
+                opcodes: this.opcodes.opcodes,
+                refactorings: this.refactorings.refactorings
+            });
+        }, 100 + this.warmUpTime + this.maxRecordedTime);
     }
 
     render(json) {
@@ -791,9 +800,9 @@ const runBenchmark = function () {
         }
     });
 
-    
-    
-    
+
+
+
 
     // Run threads
     vm.start();
@@ -852,7 +861,7 @@ const computed_refactorables = {
     }
 };
 
-const renderRefactorables = function(data,vm,workspace) {
+const renderRefactorables = function (data, vm, workspace) {
     var keys = Object.keys(data);
     const refactorables = document.getElementById('refactorables');
     for (let i = 0; i < keys.length; i++) {
