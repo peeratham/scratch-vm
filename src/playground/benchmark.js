@@ -93,17 +93,14 @@ class LoadingProgress {
 }
 
 class IdStatView {
-    constructor(name) {    //should be name of refactoring
-        this.name = name;
-        this.report = { 'projectId': 123456, 'type': 'extract_var', 'size_after': 5, 'exp_size': 4, 'duplications': 2 };
-        this.failures = [];
+    constructor(report) {    //should be name of refactoring
+        this.report = report;
     }
 
-    update(blockIdRecords) {
-        this.failures = blockIdRecords;
-        if (this.failures.length > 0) {
+    update(failures) {
+        if (failures.length > 0) {
             this.report.success = false;
-            this.report.failed_location = this.failures;
+            this.report.failed_location = failures;
         }
     }
 
@@ -135,22 +132,6 @@ class IdStatView {
         rowtxt += "</tr>";
         row.innerHTML = rowtxt;
 
-        // this.name + this.failures;
-    }
-
-    render({ table, isSlow }) {
-        const row = document.createElement('tr');
-        let cell = document.createElement('td');
-        cell.innerText = this.name;
-        row.appendChild(cell);
-
-        //failures
-
-        cell = document.createElement('td');
-        cell.innerText = JSON.stringify(this.failures);
-        row.appendChild(cell);
-
-        table.appendChild(row);
     }
 }
 
@@ -213,23 +194,26 @@ class Refactorings {
     constructor(profiler) {
         this.blockIdRecords = profiler.blockIdRecords;
         this.executedBlockIds = null;
+        let report = { 'projectId': 123456, 'type': 'extract_var', 'size_after': 5, 'exp_size': 4, 'duplications': 2 }
+        this.stats = new IdStatView(report);
     }
 
     update(blockIdRecords) {
-        let arg = "Extract Variable";
-        if (!this.executedBlockIds) {
-            this.executedBlockIds = new IdStatView(arg);
-        }
+        // let arg = "Extract Variable";
+
+        // if (!this.executedBlockIds) {
+        //     this.executedBlockIds = new IdStatView( report);
+        // }
 
         const failures = Object.keys(blockIdRecords).filter(k => k.startsWith("_assertion_failed"));
-        this.executedBlockIds.update(failures);
+        this.stats.update(failures);
     }
 }
 
 class RefactoringTable {
     constructor(options) {
         this.profiler = options.profiler;
-        this.executedBlockIds = options.executedBlockIds;
+        this.stats = options.stats;
         this.container = options.containerDom;
     }
     render() {
@@ -237,13 +221,13 @@ class RefactoringTable {
     }
 
     keys() {
-        const keys = Object.keys(this.executedBlockIds.executedBlockIds);
+        const keys = Object.keys(this.stats.stats);
         keys.sort();
         return keys;
     }
 
     view() {
-        return this.executedBlockIds.executedBlockIds;
+        return this.stats.stats;
     }
 }
 
@@ -270,11 +254,11 @@ class ProfilerRun {
             maxRecordedTime
         });
 
-        const executedBlockIds = this.executedBlockIds = new Refactorings(profiler);
-        this.invalidBlockExecIdTable = new RefactoringTable({
+        const stats = this.stats = new Refactorings(profiler);
+        this.resultTable = new RefactoringTable({
             containerDom: resultDiv,
             profiler,
-            executedBlockIds
+            stats
         });
 
         const stepId = profiler.idByName('Runtime._step');
@@ -516,11 +500,11 @@ const runBenchmark = function () {
                     // report.resp_time = t1 - t0;
                     await profilerRun.run();
                     console.log("prepare final report");
-                    profilerRun.executedBlockIds.update(profilerRun.profiler.blockIdRecords);
-                    profilerRun.invalidBlockExecIdTable.render();
+                    profilerRun.stats.update(profilerRun.profiler.blockIdRecords);
+                    profilerRun.resultTable.render();
                     window.parent.postMessage({
                         type: 'BENCH_MESSAGE_COMPLETE',
-                        refactorings: profilerRun.executedBlockIds.executedBlockIds
+                        refactorings: profilerRun.stats.stats
                     }, '*');
                 }
             })();
