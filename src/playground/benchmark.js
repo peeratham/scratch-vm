@@ -480,6 +480,9 @@ const runBenchmark = function () {
             type: 'BENCH_MESSAGE_LOADING'
         }, '*');
 
+        const projectReport = {"project_id": projectId, "refactorables":[]};
+
+
         sendAnalysisRequest().then(json => {
             //TODO: record roundtrip for whole project analysis request
             const refactorables = document.getElementById('refactorables');
@@ -496,7 +499,7 @@ const runBenchmark = function () {
                     let initialReport = json[selectRefactorableDom.value].report;
                     let profilerRun = new ProfilerRun({ vm, warmUpTime, maxRecordedTime, projectId, initialReport, resultDiv });
                     
-                    initialReport.refactorable_id = selectRefactorableDom.value;
+                    let refactorable_id = initialReport.refactorable_id = selectRefactorableDom.value;
                     //START timer
                     const t0 = performance.now();
                     Scratch.workspace.blockTransformer.doTransform(json[selectRefactorableDom.value]);
@@ -508,12 +511,19 @@ const runBenchmark = function () {
                     console.log("prepare final report");
                     profilerRun.stats.update(profilerRun.profiler.blockIdRecords);
                     profilerRun.resultTable.render();
-                    window.parent.postMessage({
-                        type: 'BENCH_MESSAGE_COMPLETE',
-                        refactorings: profilerRun.stats.stats
-                    }, '*');
+                    projectReport.refactorables.push(initialReport);
                 }
+                // finalize and send project report to benchmark suite
+                console.log("finalize: ");
+                console.log(projectReport);
+                window.parent.postMessage({
+                    type: 'BENCH_MESSAGE_COMPLETE',
+                    projectReport: projectReport
+                }, '*');
             })();
+            
+        }).then(()=>{
+            
         });
     });
 

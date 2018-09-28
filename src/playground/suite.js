@@ -135,12 +135,10 @@ const BENCH_STATUS = {
 };
 
 class BenchResult {
-    constructor ({fixture, status = BENCH_STATUS.INACTIVE, frames = null, opcodes = null, refactorings=null}) {
+    constructor ({fixture, status = BENCH_STATUS.INACTIVE, projectReport=null}) {
         this.fixture = fixture;
         this.status = status;
-        this.frames = frames;
-        this.opcodes = opcodes;
-        this.refactorings = refactorings;
+        this.projectReport = projectReport;
     }
 }
 
@@ -167,9 +165,7 @@ class BenchFixture extends Emitter {
                 const result = {
                     fixture: this,
                     status: BENCH_STATUS.STARTING,
-                    frames: null,
-                    opcodes: null,
-                    refactorings: null
+                    projectReport: null
                 };
                 if (message.type === BENCH_MESSAGE_TYPE.INACTIVE) {
                     result.status = BENCH_STATUS.RESUME;
@@ -181,7 +177,7 @@ class BenchFixture extends Emitter {
                     result.status = BENCH_STATUS.ACTIVE;
                 } else if (message.type === BENCH_MESSAGE_TYPE.COMPLETE) {
                     result.status = BENCH_STATUS.COMPLETE;
-                    result.refactorings = message.refactorings;
+                    result.projectReport = message.projectReport;
                     resolve(new BenchResult(result));
                     util.benchStream.off('message', null, this);
                 }
@@ -395,7 +391,7 @@ class BenchResultView {
             </div>
 
             <div class="">
-                ${newResult.refactorings? JSON.stringify(newResult.refactorings): ''}
+                ${newResult.projectReport? JSON.stringify(newResult.projectReport): ''}
             </div>
         `;
 
