@@ -312,81 +312,14 @@ class ProfilerRun {
         };
     }
 
-    run() {
-        this.projectId = loadProject();
-
-        window.parent.postMessage({
-            type: 'BENCH_MESSAGE_LOADING'
-        }, '*');
-
-        this.vm.on('workspaceUpdate', () => {
-            if (this.firstTimeWorkspaceUpdate) {
-                this.firstTimeWorkspaceUpdate = false;
-            } else {
-                return;
-            }
-
-            //TODO: FOR EACH REFACTORABLE
-            /**
-             * this.sendAnalysisRequest()
-             * then create initial report from server resp
-             * then process each refactorable (apply, profile, and update report)
-             */
-            this.sendAnalysisRequest().then(json => {
-                //TODO: record roundtrip for whole project analysis request
-                const refactorables = document.getElementById('refactorables');
-                return {json:json, selectRefactorableDom: renderRefactorables(refactorables,json, Scratch.workspace, {})};
-            }).then(({json, selectRefactorableDom}) => {
-                (async function refactorEvalLoop(profilerRun){
-                    for (let i = 0; i < selectRefactorableDom.length; i++) {
-                        selectRefactorableDom.selectedIndex = i;
-                        selectRefactorableDom.dispatchEvent(new Event('change'));   
-                        console.log("apply refactorable:"+i);
-                        //START timer
-                        const t0 = performance.now();
-                        Scratch.workspace.blockTransformer.doTransform(json[selectRefactorableDom.value]);
-                        //STOP timer
-                        const t1 = performance.now();
-                        // report.resp_time = t1 - t0;
-                        await profilerRun.runProfiler();  
-                    }
-                })(this);
-            }).then(() => { //profiler should run after each refactorable is applied
-                    // return this.runProfiler();  
-            }).then(() => {
-                    console.log("prepare final report");
-                    this.refactorings.update(this.profiler.blockIdRecords);
-                    this.invalidBlockExecIdTable.render();
-                    window.parent.postMessage({
-                        type: 'BENCH_MESSAGE_COMPLETE',
-                        refactorings: this.refactorings.refactorings
-                    }, '*');
-                });
-        });
-    }
-
-    sendAnalysisRequest() {
-        const url = "http://localhost:8080/refactor";
-        const testReport = { 'projectId': 'id', 'type': 'extract_var', 'size_after': 5, 'exp_size': 4, 'duplications': 2 };
-        return new Promise(function (resolve, reject) {
-
-            resolve(getProgramXml());
-
-        }).then(function (xml) {
-            return fetch(url, {
-                method: "POST", // *GET, POST, PUT, DELETE, etc.
-                mode: "cors", // no-cors, cors, *same-origin
-                cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-                headers: {
-                    "Content-Type": "text/xml"
-                },
-                body: xml, // body data type must match "Content-Type" header
-            });
-        }).then(response => response.json());
+    run(id) {
+        this.projectId = id;
+        return this.runProfiler();
     }
 
     runProfiler() {
         console.log("run profiler...");
+        this.vm.start();
         //TODO: apply refactoring, before greenFlag
         setTimeout(() => {
             window.parent.postMessage({
@@ -535,11 +468,72 @@ const runBenchmark = function () {
     // LOAD REFACTORABLE
     // APPLY 
     // PROFILE RUN
-    new ProfilerRun({
-        vm,
-        warmUpTime,
-        maxRecordedTime
-    }).run();
+    const projectId = loadProject();
+
+    const sendAnalysisRequest = function() {
+        const url = "http://localhost:8080/refactor";
+        const testReport = { 'projectId': 'id', 'type': 'extract_var', 'size_after': 5, 'exp_size': 4, 'duplications': 2 };
+        return new Promise(function (resolve, reject) {
+
+            resolve(getProgramXml());
+
+        }).then(function (xml) {
+            return fetch(url, {
+                method: "POST", // *GET, POST, PUT, DELETE, etc.
+                mode: "cors", // no-cors, cors, *same-origin
+                cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+                headers: {
+                    "Content-Type": "text/xml"
+                },
+                body: xml, // body data type must match "Content-Type" header
+            });
+        }).then(response => response.json());
+    }
+
+    
+    
+    vm.on('workspaceUpdate', () => {
+        // if (this.firstTimeWorkspaceUpdate) {
+        //     this.firstTimeWorkspaceUpdate = false;
+        // } else {
+        //     return;
+        // }
+
+        window.parent.postMessage({
+            type: 'BENCH_MESSAGE_LOADING'
+        }, '*');
+
+        sendAnalysisRequest().then(json => {
+            //TODO: record roundtrip for whole project analysis request
+            const refactorables = document.getElementById('refactorables');
+            return {json:json, selectRefactorableDom: renderRefactorables(refactorables,json, Scratch.workspace, {})};
+        }).then(({json, selectRefactorableDom}) => {
+            (async function refactorEvalLoop(){
+                for (let i = 0; i < selectRefactorableDom.length; i++) {
+                    let profilerRun = new ProfilerRun({vm,warmUpTime,maxRecordedTime});
+                    selectRefactorableDom.selectedIndex = i;
+                    selectRefactorableDom.dispatchEvent(new Event('change'));   
+                    console.log("apply refactorable:"+i);
+                    //START timer
+                    const t0 = performance.now();
+                    Scratch.workspace.blockTransformer.doTransform(json[selectRefactorableDom.value]);
+                    //STOP timer
+                    const t1 = performance.now();
+                    // report.resp_time = t1 - t0;
+                    await profilerRun.run(projectId);
+                    console.log("prepare final report");
+                    profilerRun.refactorings.update(profilerRun.profiler.blockIdRecords);
+                    profilerRun.invalidBlockExecIdTable.render();
+                    window.parent.postMessage({
+                        type: 'BENCH_MESSAGE_COMPLETE',
+                        refactorings: profilerRun.refactorings.refactorings
+                    }, '*');
+                }
+            })();
+        });
+    });
+
+  
 
     // Instantiate the renderer and connect it to the VM.
     const canvas = document.getElementById('scratch-stage');
