@@ -484,16 +484,18 @@ const runBenchmark = function () {
             //TODO: record roundtrip for whole project analysis request
             const refactorables = document.getElementById('refactorables');
             let selectRefactorableDom = renderRefactorables(refactorables, json, Scratch.workspace, {})
-            let initialReport = { 'projectId': 123456, 'type': 'extract_var', 'size_after': 5, 'exp_size': 4, 'duplications': 2 };
-            return { json, selectRefactorableDom, initialReport };
-        }).then(({ json, selectRefactorableDom, initialReport}) => {
+            return { json, selectRefactorableDom};
+        }).then(({ json, selectRefactorableDom}) => {
             
             (async function refactorEvalLoop() {
                 for (let i = 0; i < selectRefactorableDom.length; i++) {
-                    let profilerRun = new ProfilerRun({ vm, warmUpTime, maxRecordedTime, projectId, initialReport, resultDiv });
+                    //programmatically select refactorable to execute
                     selectRefactorableDom.selectedIndex = i;
                     selectRefactorableDom.dispatchEvent(new Event('change'));
-                    console.log("apply refactorable:" + i);
+
+                    let initialReport = json[selectRefactorableDom.value].report;
+                    let profilerRun = new ProfilerRun({ vm, warmUpTime, maxRecordedTime, projectId, initialReport, resultDiv });
+                    
                     initialReport.refactorable_id = selectRefactorableDom.value;
                     //START timer
                     const t0 = performance.now();
@@ -502,6 +504,7 @@ const runBenchmark = function () {
                     const t1 = performance.now();
                     initialReport.resp_time = t1 - t0;
                     await profilerRun.run();
+                    
                     console.log("prepare final report");
                     profilerRun.stats.update(profilerRun.profiler.blockIdRecords);
                     profilerRun.resultTable.render();

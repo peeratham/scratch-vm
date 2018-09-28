@@ -7,7 +7,8 @@ const computed_refactorables = {
                 "type": "BlockCreateAction",
                 "block_xml": "<xml><block type='event_whenflagclicked' id='$qzcZRovdQ?/.].mHhQ%' x='63' y='47'><next><block type='motion_movesteps' id='`}x+~AAoYR)K8AgT$Jf('><value name='STEPS'><shadow xmlns='' type='math_number' id='i+t2}H;AK6]xvomm2L!1'><field name='NUM'>10</field></shadow><block type='operator_add' id='S$ke,BdE{(*byS^NF/)b'><value name='NUM1'><shadow type='math_number' id='o~ikTh6`@9$!=hU?{Otd'><field name='NUM'>1</field></shadow></value><value name='NUM2'><shadow type='math_number' id='VM|FKX@^G%((_CX^/}Rv'><field name='NUM'>2</field></shadow></value></block></value><next><block type='motion_pointindirection' id='y~KDiyE4SpAoS|xtDI#F'><value name='DIRECTION'><shadow xmlns='' type='math_angle' id=']^p?ASOD|3xORhegAmiI'><field name='NUM'>90</field></shadow><block type='operator_add' id='+Ms7c^/)F$:n+qMV6*E,'><value name='NUM1'><shadow type='math_number' id='kA@IM!WF#oWw!X6(hI_f'><field name='NUM'>1</field></shadow></value><value name='NUM2'><shadow type='math_number' id='/qx#_A6HA`8r9rL3Fe~n'><field name='NUM'>2</field></shadow></value></block></value></block></next></block></next></block></xml>"
             }
-        ]
+        ],
+        "report":{ "type": "extract_var", "size_after": 5, "exp_size": 4, "duplications": 2 }
     },
     "refactorable_1": {
         "id": "refactorable_1",
@@ -46,6 +47,7 @@ const computed_refactorables = {
                 "target_block": "+Ms7c^/)F$:n+qMV6*E,",
                 "replace_with": "temp_id_2"
             }
-        ]
+        ],
+        "report":{ "type": "extract_var", "size_after": 8, "exp_size": 9, "duplications": 5 }
     }
 };
