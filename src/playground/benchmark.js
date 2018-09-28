@@ -191,10 +191,9 @@ class RunningStatsView {
 }
 
 class Refactorings {
-    constructor(profiler) {
+    constructor(profiler, report) {
         this.blockIdRecords = profiler.blockIdRecords;
         this.executedBlockIds = null;
-        let report = { 'projectId': 123456, 'type': 'extract_var', 'size_after': 5, 'exp_size': 4, 'duplications': 2 }
         this.stats = new IdStatView(report);
     }
 
@@ -232,7 +231,7 @@ class RefactoringTable {
 }
 
 class ProfilerRun {
-    constructor({ vm, maxRecordedTime, warmUpTime, projectId, resultDiv }) {
+    constructor({ vm, maxRecordedTime, warmUpTime, projectId, initialReport, resultDiv }) {
         this.vm = vm;
         this.maxRecordedTime = maxRecordedTime;
         this.warmUpTime = warmUpTime;
@@ -254,7 +253,7 @@ class ProfilerRun {
             maxRecordedTime
         });
 
-        const stats = this.stats = new Refactorings(profiler);
+        const stats = this.stats = new Refactorings(profiler,initialReport);
         this.resultTable = new RefactoringTable({
             containerDom: resultDiv,
             profiler,
@@ -484,20 +483,24 @@ const runBenchmark = function () {
         sendAnalysisRequest().then(json => {
             //TODO: record roundtrip for whole project analysis request
             const refactorables = document.getElementById('refactorables');
-            return { json: json, selectRefactorableDom: renderRefactorables(refactorables, json, Scratch.workspace, {}) };
-        }).then(({ json, selectRefactorableDom }) => {
+            let selectRefactorableDom = renderRefactorables(refactorables, json, Scratch.workspace, {})
+            let initialReport = { 'projectId': 123456, 'type': 'extract_var', 'size_after': 5, 'exp_size': 4, 'duplications': 2 };
+            return { json, selectRefactorableDom, initialReport };
+        }).then(({ json, selectRefactorableDom, initialReport}) => {
+            
             (async function refactorEvalLoop() {
                 for (let i = 0; i < selectRefactorableDom.length; i++) {
-                    let profilerRun = new ProfilerRun({ vm, warmUpTime, maxRecordedTime, projectId, resultDiv });
+                    let profilerRun = new ProfilerRun({ vm, warmUpTime, maxRecordedTime, projectId, initialReport, resultDiv });
                     selectRefactorableDom.selectedIndex = i;
                     selectRefactorableDom.dispatchEvent(new Event('change'));
                     console.log("apply refactorable:" + i);
+                    initialReport.refactorable_id = selectRefactorableDom.value;
                     //START timer
                     const t0 = performance.now();
                     Scratch.workspace.blockTransformer.doTransform(json[selectRefactorableDom.value]);
                     //STOP timer
                     const t1 = performance.now();
-                    // report.resp_time = t1 - t0;
+                    initialReport.resp_time = t1 - t0;
                     await profilerRun.run();
                     console.log("prepare final report");
                     profilerRun.stats.update(profilerRun.profiler.blockIdRecords);
