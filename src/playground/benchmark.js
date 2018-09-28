@@ -334,14 +334,25 @@ class ProfilerRun {
              */
             this.sendAnalysisRequest().then(json => {
                 //TODO: record roundtrip for whole project analysis request
-                return renderRefactorables(json, Scratch.vm, Scratch.workspace, {});
-            }).then(function (selectRefactorableDom) {
-                for (let i = 0; i < selectRefactorableDom.length; i++) {
-                    selectRefactorableDom.selectedIndex = i;
-                    selectRefactorableDom.dispatchEvent(new Event('change'));
-                }
-            }).then(() => {
-                    return this.runProfiler();
+                const refactorables = document.getElementById('refactorables');
+                return {json:json, selectRefactorableDom: renderRefactorables(refactorables,json, Scratch.workspace, {})};
+            }).then(({json, selectRefactorableDom}) => {
+                (async function refactorEvalLoop(profilerRun){
+                    for (let i = 0; i < selectRefactorableDom.length; i++) {
+                        selectRefactorableDom.selectedIndex = i;
+                        selectRefactorableDom.dispatchEvent(new Event('change'));   
+                        console.log("apply refactorable:"+i);
+                        //START timer
+                        const t0 = performance.now();
+                        Scratch.workspace.blockTransformer.doTransform(json[selectRefactorableDom.value]);
+                        //STOP timer
+                        const t1 = performance.now();
+                        // report.resp_time = t1 - t0;
+                        await profilerRun.runProfiler();  
+                    }
+                })(this);
+            }).then(() => { //profiler should run after each refactorable is applied
+                    // return this.runProfiler();  
             }).then(() => {
                     console.log("prepare final report");
                     this.refactorings.update(this.profiler.blockIdRecords);
@@ -350,7 +361,6 @@ class ProfilerRun {
                         type: 'BENCH_MESSAGE_COMPLETE',
                         refactorings: this.refactorings.refactorings
                     }, '*');
-                    
                 });
         });
     }
@@ -376,6 +386,7 @@ class ProfilerRun {
     }
 
     runProfiler() {
+        console.log("run profiler...");
         //TODO: apply refactoring, before greenFlag
         setTimeout(() => {
             window.parent.postMessage({
@@ -392,10 +403,11 @@ class ProfilerRun {
 
         return new Promise((resolve, reject) => {
             setTimeout(() => {
+                console.log("cleaning up");
                 this.vm.stopAll();
                 clearTimeout(this.vm.runtime._steppingInterval);
 
-                let failures = Object.keys(this.vm.runtime.profiler.blockIdRecords).filter(k => k.startsWith("_assertion_failed"));
+                let failures = Object.keys(this.profiler.blockIdRecords).filter(k => k.startsWith("_assertion_failed"));
                 if (failures.length > 0) {
                     this.report.success = false;
                 }
@@ -404,8 +416,6 @@ class ProfilerRun {
                 resolve(this.report);
             }, 100 + this.warmUpTime + this.maxRecordedTime);
         });
-
-
     }
 
     render(json) {
@@ -507,8 +517,8 @@ const runBenchmark = function () {
             .innerText = progress.complete;
     }).on(storage);
 
-    let warmUpTime = 1000;
-    let maxRecordedTime = 2000;
+    let warmUpTime = 2000;
+    let maxRecordedTime = 3000;
 
     if (location.hash) {
         const split = location.hash.substring(1).split(',');
@@ -520,6 +530,11 @@ const runBenchmark = function () {
 
     maxRecordedTime = 1000;
 
+    //TODO 
+    // SEND REQUEST
+    // LOAD REFACTORABLE
+    // APPLY 
+    // PROFILE RUN
     new ProfilerRun({
         vm,
         warmUpTime,
@@ -602,9 +617,9 @@ const runBenchmark = function () {
     vm.start();
 };
 
-const renderRefactorables = function (data, vm, workspace, report) {
+const renderRefactorables = function (refactorables, data, workspace, report) {
     var keys = Object.keys(data);
-    const refactorables = document.getElementById('refactorables');
+    
     for (let i = 0; i < keys.length; i++) {
         const refactorable = document.createElement('option');
         refactorable.setAttribute('value', data[keys[i]].id);
@@ -617,16 +632,13 @@ const renderRefactorables = function (data, vm, workspace, report) {
     }
 
     refactorables.onchange = function () {
-        //START timer
-        const t0 = performance.now();
-        workspace.blockTransformer.doTransform(data[this.value]);
-        //STOP timer
-        const t1 = performance.now();
-        report.resp_time = t1 - t0;
+        // do nothing
     };
 
     return refactorables;
 }
+
+
 
 /**
  * Render previously run benchmark data.
