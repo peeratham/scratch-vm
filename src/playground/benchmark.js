@@ -432,6 +432,14 @@ const runBenchmark = function () {
         }
     });
     Scratch.workspace = workspace;
+    
+    //connect workspace to vm
+    Scratch.workspace.addChangeListener(Scratch.vm.blockListener);
+    Scratch.workspace.addChangeListener(Scratch.vm.variableListener);
+    const flyoutWorkspace = Scratch.workspace.getFlyout().getWorkspace();
+    flyoutWorkspace.addChangeListener(Scratch.vm.flyoutBlockListener);
+    flyoutWorkspace.addChangeListener(Scratch.vm.monitorBlockListener);
+
 
 
     vm.setTurboMode(false);  //turbo
