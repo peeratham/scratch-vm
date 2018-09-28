@@ -92,42 +92,10 @@ class LoadingProgress {
     }
 }
 
-class StatTable {
-    constructor({ table, keys, viewOf, isSlow, container }) {
-        this.table = table;
-        this.container = container;
-        if (keys) {
-            this.keys = keys;
-        }
-        if (viewOf) {
-            this.viewOf = viewOf;
-        }
-        if (isSlow) {
-            this.isSlow = isSlow;
-        }
-    }
-
-    render() {
-        const table = this.table;
-        Array.from(table.children)
-            .forEach(node => table.removeChild(node));
-        const keys = this.keys();
-        for (const key of keys) {
-            this.viewOf(key).renderSimpleJson(this.container);
-            this.viewOf(key).render({
-                table,
-                isSlow: frame => this.isSlow(key, frame)
-            });
-        }
-    }
-}
-
-
-
 class IdStatView {
     constructor(name) {    //should be name of refactoring
         this.name = name;
-        this.report = { 'projectId': 123456, 'type': 'extract_var', 'size_after': 5, 'exp_size': 4, 'duplications': 2};
+        this.report = { 'projectId': 123456, 'type': 'extract_var', 'size_after': 5, 'exp_size': 4, 'duplications': 2 };
         this.failures = [];
     }
 
@@ -139,27 +107,35 @@ class IdStatView {
         }
     }
 
+    updateReport(key, value) {
+        this.report[key] = value;
+    }
+
     renderSimpleJson(div) {
-        let txt = "<table border='0'>"
-        // header
-        txt += "<thead>";
-        txt += "<tr class='profile-count-refactoring-head'>";
-        for (var key in this.report) {
-            txt += "<th>" + key + "</th>";
+        let table = div.getElementsByTagName("table")[0];
+        //if no table header yet
+        if (table.rows.length === 0) {
+            let txt = "<thead>";
+            txt += "<tr class='profile-count-refactoring-head'>";
+            for (var key in this.report) {
+                txt += "<th>" + key + "</th>";
+            }
+            txt += "</tr>";
+            txt += "<thead>";
+            let header = table.insertRow(0);
+            header.innerHTML = txt;
         }
-        txt += "</tr>";
-        txt += "<thead>";
-        // body
-        txt += "<tr>";
-        for (var key in this.report) {
-            txt += "<td>" + this.report[key] + "</td>";
-        }
-        txt += "</tr>";
 
-        txt += "</table>";
-        div.innerHTML = txt;
+        // body        
+        let row = table.insertRow(table.rows.length);
+        let rowtxt = "<tr>";
+        for (var key in this.report) {
+            rowtxt += "<td>" + this.report[key] + "</td>";
+        }
+        rowtxt += "</tr>";
+        row.innerHTML = rowtxt;
+
         // this.name + this.failures;
-
     }
 
     render({ table, isSlow }) {
@@ -236,46 +212,47 @@ class RunningStatsView {
 class Refactorings {
     constructor(profiler) {
         this.blockIdRecords = profiler.blockIdRecords;
-        this.refactorings = {};
+        this.executedBlockIds = null;
     }
 
     update(blockIdRecords) {
         let arg = "Extract Variable";
-        if (!this.refactorings[arg]) {
-            this.refactorings[arg] = new IdStatView(arg);
+        if (!this.executedBlockIds) {
+            this.executedBlockIds = new IdStatView(arg);
         }
 
         const failures = Object.keys(blockIdRecords).filter(k => k.startsWith("_assertion_failed"));
-        this.refactorings[arg].update(failures);
-
-        // }
+        this.executedBlockIds.update(failures);
     }
 }
 
-class RefactoringTable extends StatTable {
+class RefactoringTable {
     constructor(options) {
-        super(options);
-
         this.profiler = options.profiler;
-        this.refactorings = options.refactorings;
+        this.executedBlockIds = options.executedBlockIds;
+        this.container = options.containerDom;
+    }
+    render() {
+        this.view().renderSimpleJson(this.container);
     }
 
     keys() {
-        const keys = Object.keys(this.refactorings.refactorings);
+        const keys = Object.keys(this.executedBlockIds.executedBlockIds);
         keys.sort();
         return keys;
     }
 
-    viewOf(key) {
-        return this.refactorings.refactorings[key];
+    view() {
+        return this.executedBlockIds.executedBlockIds;
     }
 }
 
 class ProfilerRun {
-    constructor({ vm, maxRecordedTime, warmUpTime }) {
+    constructor({ vm, maxRecordedTime, warmUpTime, projectId, resultDiv }) {
         this.vm = vm;
         this.maxRecordedTime = maxRecordedTime;
         this.warmUpTime = warmUpTime;
+        this.projectId = projectId;
 
         this.report = {};
 
@@ -293,14 +270,11 @@ class ProfilerRun {
             maxRecordedTime
         });
 
-        const refactorings = this.refactorings = new Refactorings(profiler);
+        const executedBlockIds = this.executedBlockIds = new Refactorings(profiler);
         this.invalidBlockExecIdTable = new RefactoringTable({
-            table: document
-                .getElementsByClassName('profile-count-refactoring-table')[0]
-                .getElementsByTagName('tbody')[0],
-            container: document.getElementById('profile-refactoring-result'),
+            containerDom: resultDiv,
             profiler,
-            refactorings
+            executedBlockIds
         });
 
         const stepId = profiler.idByName('Runtime._step');
@@ -312,8 +286,7 @@ class ProfilerRun {
         };
     }
 
-    run(id) {
-        this.projectId = id;
+    run() {
         return this.runProfiler();
     }
 
@@ -361,11 +334,21 @@ class ProfilerRun {
 
         this.refactorings.refactorings = {};
 
-        Object.entries(json.refactorings).forEach(([key, data]) => {
-            this.refactorings.refactorings[key] = Object.assign(new IdStatView(), data);
-        });
+        // Object.entries(json.refactorings).forEach(([key, data]) => {
+        this.refactorings.refactorings = Object.assign(new IdStatView(), data);
+        // });
     }
 }
+
+const setupResultTable = function (div) {
+    let txt = "<table border='0'>"
+    // header
+
+
+    txt += "</table>";
+    div.innerHTML = txt;
+}
+
 
 /**
  * Run the benchmark with given parameters in the location's hash field or
@@ -432,7 +415,7 @@ const runBenchmark = function () {
         }
     });
     Scratch.workspace = workspace;
-    
+
     //connect workspace to vm
     Scratch.workspace.addChangeListener(Scratch.vm.blockListener);
     Scratch.workspace.addChangeListener(Scratch.vm.variableListener);
@@ -476,9 +459,12 @@ const runBenchmark = function () {
     // LOAD REFACTORABLE
     // APPLY 
     // PROFILE RUN
+    const resultDiv = document.getElementById('profile-refactoring-result');
+    setupResultTable(resultDiv);
+
     const projectId = loadProject();
 
-    const sendAnalysisRequest = function() {
+    const sendAnalysisRequest = function () {
         const url = "http://localhost:8080/refactor";
         const testReport = { 'projectId': 'id', 'type': 'extract_var', 'size_after': 5, 'exp_size': 4, 'duplications': 2 };
         return new Promise(function (resolve, reject) {
@@ -498,8 +484,8 @@ const runBenchmark = function () {
         }).then(response => response.json());
     }
 
-    
-    
+
+
     vm.on('workspaceUpdate', () => {
         // if (this.firstTimeWorkspaceUpdate) {
         //     this.firstTimeWorkspaceUpdate = false;
@@ -514,34 +500,34 @@ const runBenchmark = function () {
         sendAnalysisRequest().then(json => {
             //TODO: record roundtrip for whole project analysis request
             const refactorables = document.getElementById('refactorables');
-            return {json:json, selectRefactorableDom: renderRefactorables(refactorables,json, Scratch.workspace, {})};
-        }).then(({json, selectRefactorableDom}) => {
-            (async function refactorEvalLoop(){
+            return { json: json, selectRefactorableDom: renderRefactorables(refactorables, json, Scratch.workspace, {}) };
+        }).then(({ json, selectRefactorableDom }) => {
+            (async function refactorEvalLoop() {
                 for (let i = 0; i < selectRefactorableDom.length; i++) {
-                    let profilerRun = new ProfilerRun({vm,warmUpTime,maxRecordedTime});
+                    let profilerRun = new ProfilerRun({ vm, warmUpTime, maxRecordedTime, projectId, resultDiv });
                     selectRefactorableDom.selectedIndex = i;
-                    selectRefactorableDom.dispatchEvent(new Event('change'));   
-                    console.log("apply refactorable:"+i);
+                    selectRefactorableDom.dispatchEvent(new Event('change'));
+                    console.log("apply refactorable:" + i);
                     //START timer
                     const t0 = performance.now();
                     Scratch.workspace.blockTransformer.doTransform(json[selectRefactorableDom.value]);
                     //STOP timer
                     const t1 = performance.now();
                     // report.resp_time = t1 - t0;
-                    await profilerRun.run(projectId);
+                    await profilerRun.run();
                     console.log("prepare final report");
-                    profilerRun.refactorings.update(profilerRun.profiler.blockIdRecords);
+                    profilerRun.executedBlockIds.update(profilerRun.profiler.blockIdRecords);
                     profilerRun.invalidBlockExecIdTable.render();
                     window.parent.postMessage({
                         type: 'BENCH_MESSAGE_COMPLETE',
-                        refactorings: profilerRun.refactorings.refactorings
+                        refactorings: profilerRun.executedBlockIds.executedBlockIds
                     }, '*');
                 }
             })();
         });
     });
 
-  
+
 
     // Instantiate the renderer and connect it to the VM.
     const canvas = document.getElementById('scratch-stage');
@@ -621,7 +607,7 @@ const runBenchmark = function () {
 
 const renderRefactorables = function (refactorables, data, workspace, report) {
     var keys = Object.keys(data);
-    
+
     for (let i = 0; i < keys.length; i++) {
         const refactorable = document.createElement('option');
         refactorable.setAttribute('value', data[keys[i]].id);
