@@ -198,12 +198,6 @@ class Refactorings {
     }
 
     update(blockIdRecords) {
-        // let arg = "Extract Variable";
-
-        // if (!this.executedBlockIds) {
-        //     this.executedBlockIds = new IdStatView( report);
-        // }
-
         const failures = Object.keys(blockIdRecords).filter(k => k.startsWith("_assertion_failed"));
         this.stats.update(failures);
     }
@@ -231,13 +225,15 @@ class RefactoringTable {
 }
 
 class ProfilerRun {
-    constructor({ vm, maxRecordedTime, warmUpTime, projectId, initialReport, resultDiv }) {
+    constructor({ vm, maxRecordedTime, warmUpTime, projectId, initialReport, resultDiv, targetInvariantChecks}) {
         this.vm = vm;
         this.maxRecordedTime = maxRecordedTime;
         this.warmUpTime = warmUpTime;
         this.projectId = projectId;
+        this.targetInvariantChecks = targetInvariantChecks;
 
         this.report = {};
+
 
         this.firstTimeWorkspaceUpdate = true;
 
@@ -248,7 +244,6 @@ class ProfilerRun {
         const runningStats = this.runningStats = new RunningStats(profiler);
         const runningStatsView = this.runningStatsView = new RunningStatsView({
             dom: document.getElementsByClassName('profile-count-group')[0],
-
             runningStats,
             maxRecordedTime
         });
@@ -302,9 +297,16 @@ class ProfilerRun {
                 }
 
                 this.vm.runtime.profiler = null;
-                resolve(this.report);
+                resolve();
             }, 100 + this.warmUpTime + this.maxRecordedTime);
         });
+    }
+
+    coverage(){
+        let executedBlocks = new Set(Object.keys(this.profiler.blockIdRecords));
+        let uncoveredChecks = new Set([...this.targetInvariantChecks].filter(x => !executedBlocks.has(x)));
+        let coverage = (this.targetInvariantChecks.size - uncoveredChecks.size)/this.targetInvariantChecks.size;
+        return coverage;
     }
 
     render(json) {
@@ -449,7 +451,6 @@ const runBenchmark = function () {
 
     const sendAnalysisRequest = function () {
         const url = "http://localhost:8080/refactor";
-        const testReport = { 'projectId': 'id', 'type': 'extract_var', 'size_after': 5, 'exp_size': 4, 'duplications': 2 };
         return new Promise(function (resolve, reject) {
 
             resolve(getProgramXml());
@@ -497,7 +498,8 @@ const runBenchmark = function () {
                     selectRefactorableDom.dispatchEvent(new Event('change'));
 
                     let initialReport = json[selectRefactorableDom.value].report;
-                    let profilerRun = new ProfilerRun({ vm, warmUpTime, maxRecordedTime, projectId, initialReport, resultDiv });
+                    let targetInvariantChecks = new Set(["T?,F,g{dyE*rx3/EdX^H","_assertion_failed","invariant02"]);
+                    let profilerRun = new ProfilerRun({ vm, warmUpTime, maxRecordedTime, projectId, initialReport, resultDiv,targetInvariantChecks});
                     
                     let refactorable_id = initialReport.refactorable_id = selectRefactorableDom.value;
                     //START timer
@@ -507,11 +509,26 @@ const runBenchmark = function () {
                     const t1 = performance.now();
                     initialReport.resp_time = t1 - t0;
                     await profilerRun.run();
+
+                    let count = 0;
+                    const maxCoverageRunAttempts = 3;
+                    
+                    while(profilerRun.coverage()<0.8 && count < maxCoverageRunAttempts){
+                        console.log("coverage:"+profilerRun.coverage());
+                        await profilerRun.run();
+                        count++;
+                    }
                     
                     console.log("prepare final report");
                     profilerRun.stats.update(profilerRun.profiler.blockIdRecords);
+                    
                     profilerRun.resultTable.render();
                     projectReport.refactorables.push(initialReport);
+                    
+                    //clean up (undo changes)
+                    if(refactorable_id!=="populate1"){
+                        await Scratch.workspace.undo();
+                    }
                 }
                 // finalize and send project report to benchmark suite
                 console.log("finalize: ");
