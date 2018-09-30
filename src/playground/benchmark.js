@@ -456,7 +456,8 @@ const runBenchmark = function () {
                 mode: "cors", // no-cors, cors, *same-origin
                 cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
                 headers: {
-                    "Content-Type": "text/xml"
+                    "Content-Type": "text/xml",
+                    "id": projectId+"-extractvar"
                 },
                 body: xml, // body data type must match "Content-Type" header
             });
@@ -522,7 +523,7 @@ const runBenchmark = function () {
                     projectReport.refactorables.push(initialReport);
                     
                     //clean up (undo changes)
-                    if(refactorable_id!=="populate1"){
+                    if(refactorable_id!=="test_setup"){
                         await Scratch.workspace.undo();
                     }
                 }
