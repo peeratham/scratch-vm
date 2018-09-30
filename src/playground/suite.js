@@ -12,20 +12,20 @@ const soon = (() => {
 })();
 
 class Emitter {
-    constructor () {
+    constructor() {
         Object.defineProperty(this, '_listeners', {
             value: {},
             enumerable: false
         });
     }
-    on (name, listener, context) {
+    on(name, listener, context) {
         if (!this._listeners[name]) {
             this._listeners[name] = [];
         }
 
         this._listeners[name].push(listener, context);
     }
-    off (name, listener, context) {
+    off(name, listener, context) {
         if (this._listeners[name]) {
             if (listener) {
                 for (let i = 0; i < this._listeners[name].length; i += 2) {
@@ -46,7 +46,7 @@ class Emitter {
             }
         }
     }
-    emit (name, ...args) {
+    emit(name, ...args) {
         if (this._listeners[name]) {
             for (let i = 0; i < this._listeners[name].length; i += 2) {
                 this._listeners[name][i].call(this._listeners[name][i + 1] || this, ...args);
@@ -56,7 +56,7 @@ class Emitter {
 }
 
 class BenchFrameStream extends Emitter {
-    constructor (frame) {
+    constructor(frame) {
         super();
 
         this.frame = frame;
@@ -65,7 +65,7 @@ class BenchFrameStream extends Emitter {
         });
     }
 
-    send (message) {
+    send(message) {
         this.frame.send(message);
     }
 }
@@ -88,21 +88,21 @@ const BENCH_MESSAGE_TYPE = {
 };
 
 class BenchUtil {
-    constructor (frame) {
+    constructor(frame) {
         this.frame = frame;
         this.benchStream = new BenchFrameStream(frame);
     }
 
-    setFrameLocation (url) {
+    setFrameLocation(url) {
         this.frame.contentWindow.location.assign(url);
     }
 
-    startBench (args) {
+    startBench(args) {
         this.benchArgs = args;
         this.setFrameLocation(`index.html#${benchmarkUrlArgs(args)}`);
     }
 
-    pauseBench () {
+    pauseBench() {
         new Promise(resolve => setTimeout(resolve, 1000))
             .then(() => {
                 this.benchStream.emit('message', {
@@ -111,11 +111,11 @@ class BenchUtil {
             });
     }
 
-    resumeBench () {
+    resumeBench() {
         this.startBench(this.benchArgs);
     }
 
-    renderResults (results) {
+    renderResults(results) {
         const jsonResults = btoa(JSON.stringify(results));
         console.log(jsonResults);
         this.setFrameLocation(
@@ -135,7 +135,7 @@ const BENCH_STATUS = {
 };
 
 class BenchResult {
-    constructor ({fixture, status = BENCH_STATUS.INACTIVE, projectReport=null}) {
+    constructor({ fixture, status = BENCH_STATUS.INACTIVE, projectReport = null }) {
         this.fixture = fixture;
         this.status = status;
         this.projectReport = projectReport;
@@ -143,7 +143,7 @@ class BenchResult {
 }
 
 class BenchFixture extends Emitter {
-    constructor ({
+    constructor({
         projectId,
         warmUpTime = 4000,
         recordingTime = 6000
@@ -155,11 +155,11 @@ class BenchFixture extends Emitter {
         this.recordingTime = recordingTime;
     }
 
-    get id () {
+    get id() {
         return `${this.projectId}-${this.warmUpTime}-${this.recordingTime}`;
     }
 
-    run (util) {
+    run(util) {
         return new Promise(resolve => {
             util.benchStream.on('message', message => {
                 const result = {
@@ -189,7 +189,7 @@ class BenchFixture extends Emitter {
 }
 
 class BenchSuiteResult extends Emitter {
-    constructor ({suite, results = []}) {
+    constructor({ suite, results = [] }) {
         super();
 
         this.suite = suite;
@@ -207,17 +207,17 @@ class BenchSuiteResult extends Emitter {
 }
 
 class BenchSuite extends Emitter {
-    constructor (fixtures = []) {
+    constructor(fixtures = []) {
         super();
 
         this.fixtures = fixtures;
     }
 
-    add (fixture) {
+    add(fixture) {
         this.fixtures.push(fixture);
     }
 
-    run (util) {
+    run(util) {
         return new Promise(resolve => {
             const fixtures = this.fixtures.slice();
             const results = [];
@@ -234,7 +234,7 @@ class BenchSuite extends Emitter {
                         .then(push)
                         .then(pop);
                 } else {
-                    resolve(new BenchSuiteResult({suite: this, results}));
+                    resolve(new BenchSuiteResult({ suite: this, results }));
                 }
             };
             pop();
@@ -243,7 +243,7 @@ class BenchSuite extends Emitter {
 }
 
 class BenchRunner extends Emitter {
-    constructor ({frame, suite}) {
+    constructor({ frame, suite }) {
         super();
 
         this.frame = frame;
@@ -251,7 +251,7 @@ class BenchRunner extends Emitter {
         this.util = new BenchUtil(frame);
     }
 
-    run () {
+    run() {
         return this.suite.run(this.util);
     }
 }
@@ -267,27 +267,27 @@ const viewNames = {
 };
 
 class BenchResultView {
-    constructor ({result, benchUtil}) {
+    constructor({ result, benchUtil }) {
         this.result = result;
         this.compare = null;
         this.benchUtil = benchUtil;
         this.dom = document.createElement('div');
     }
 
-    update (result) {
+    update(result) {
         soon().then(() => this.render(result));
     }
 
-    resume () {
+    resume() {
         this.benchUtil.resumeBench();
     }
 
-    setFrameLocation (loc) {
+    setFrameLocation(loc) {
         this.benchUtil.pauseBench();
         this.benchUtil.setFrameLocation(loc);
     }
 
-    act (ev) {
+    act(ev) {
         if (
             ev.type === 'click' &&
             ev.button === 0 &&
@@ -308,7 +308,7 @@ class BenchResultView {
         }
     }
 
-    render (newResult = this.result, compareResult = this.compare) {
+    render(newResult = this.result, compareResult = this.compare) {
         const newResultFrames = (newResult.frames ? newResult.frames : []);
 
         const blockFunctionFrame = newResultFrames
@@ -348,7 +348,7 @@ class BenchResultView {
 
         this.dom.className = `result-view ${
             viewNames[newResult.status].toLowerCase()
-        }`;
+            }`;
         this.dom.onclick = this.act.bind(this);
         let url = `index.html#${benchmarkUrlArgs(newResult.fixture)}`;
         if (newResult.status === BENCH_STATUS.COMPLETE) {
@@ -391,7 +391,7 @@ class BenchResultView {
             </div>
 
             <div class="">
-                ${newResult.projectReport? JSON.stringify(newResult.projectReport): ''}
+                ${newResult.projectReport ? JSON.stringify(newResult.projectReport) : ''}
             </div>
         `;
 
@@ -401,8 +401,8 @@ class BenchResultView {
 }
 
 class BenchSuiteResultView {
-    constructor ({runner}) {
-        const {suite, util} = runner;
+    constructor({ runner }) {
+        const { suite, util } = runner;
 
         this.runner = runner;
         this.suite = suite;
@@ -411,7 +411,7 @@ class BenchSuiteResultView {
 
         for (const fixture of suite.fixtures) {
             this.views[fixture.id] = new BenchResultView({
-                result: new BenchResult({fixture}),
+                result: new BenchResult({ fixture }),
                 benchUtil: util
             });
         }
@@ -421,7 +421,7 @@ class BenchSuiteResultView {
         });
     }
 
-    render () {
+    render() {
         this.dom.innerHTML = `<div class="legend">
             <span>Project ID</span>
             <div class="result-status">
@@ -470,11 +470,11 @@ window.upload = function (_this) {
             .forEach(view => {
                 const sameFixture = report.results.find(result => (
                     result.fixture.projectId ===
-                        view.result.fixture.projectId &&
+                    view.result.fixture.projectId &&
                     result.fixture.warmUpTime ===
-                        view.result.fixture.warmUpTime &&
+                    view.result.fixture.warmUpTime &&
                     result.fixture.recordingTime ===
-                        view.result.fixture.recordingTime
+                    view.result.fixture.recordingTime
                 ));
 
                 if (sameFixture) {
@@ -501,7 +501,7 @@ window.download = function (_this) {
         results: Object.values(suiteView.views)
             .map(view => view.result)
             .filter(view => view.status === BENCH_STATUS.COMPLETE)
-    })], {type: 'application/json'});
+    })], { type: 'application/json' });
 
     _this.download = 'scratch-vm-benchmark.json';
     _this.href = URL.createObjectURL(blob);
@@ -528,10 +528,16 @@ window.onload = function () {
         recordingTime: 3000
     }));
 
-    
+    // suite.add(new BenchFixture({
+    //     projectId: 247507535,
+    //     warmUpTime: 1000,
+    //     recordingTime: 3000
+    // }));
 
 
-   
+
+
+
 
     // TODO: #1322
     // Error: Cannot create monitor for target that cannot be found by name
@@ -569,8 +575,8 @@ window.onload = function () {
     // standard(238750909); // bob ross painting (heavy pen stamp)
 
     const frame = document.getElementsByTagName('iframe')[0];
-    const runner = new BenchRunner({frame, suite});
-    const resultsView = suiteView = new BenchSuiteResultView({runner}).render();
+    const runner = new BenchRunner({ frame, suite });
+    const resultsView = suiteView = new BenchSuiteResultView({ runner }).render();
 
     document.getElementsByClassName('suite-results')[0]
         .appendChild(resultsView.dom);

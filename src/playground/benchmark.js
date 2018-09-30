@@ -439,11 +439,6 @@ const runBenchmark = function () {
 
     maxRecordedTime = 1000;
 
-    //TODO 
-    // SEND REQUEST
-    // LOAD REFACTORABLE
-    // APPLY 
-    // PROFILE RUN
     const resultDiv = document.getElementById('profile-refactoring-result');
     setupResultTable(resultDiv);
 
@@ -497,14 +492,15 @@ const runBenchmark = function () {
                     selectRefactorableDom.selectedIndex = i;
                     selectRefactorableDom.dispatchEvent(new Event('change'));
 
-                    let initialReport = json[selectRefactorableDom.value].report;
+                    projectReport['metrics'] = json['metrics'];
+                    let initialReport = json['refactorables'][i].report;
                     let targetInvariantChecks = new Set(["T?,F,g{dyE*rx3/EdX^H","_assertion_failed","invariant02"]);
                     let profilerRun = new ProfilerRun({ vm, warmUpTime, maxRecordedTime, projectId, initialReport, resultDiv,targetInvariantChecks});
                     
                     let refactorable_id = initialReport.refactorable_id = selectRefactorableDom.value;
                     //START timer
                     const t0 = performance.now();
-                    Scratch.workspace.blockTransformer.doTransform(json[selectRefactorableDom.value]);
+                    Scratch.workspace.blockTransformer.doTransform(json['refactorables'][i]);
                     //STOP timer
                     const t1 = performance.now();
                     initialReport.resp_time = t1 - t0;
@@ -623,14 +619,15 @@ const runBenchmark = function () {
 };
 
 const renderRefactorables = function (refactorables, data, workspace, report) {
-    var keys = Object.keys(data);
+    // var keys = Object.keys(data['refactorables']);
+    var refactorableData = data['refactorables'];
 
-    for (let i = 0; i < keys.length; i++) {
+    for (let i = 0; i < refactorableData.length; i++) {
         const refactorable = document.createElement('option');
-        refactorable.setAttribute('value', data[keys[i]].id);
+        refactorable.setAttribute('value', refactorableData[i].id);
 
         refactorable.appendChild(
-            document.createTextNode(data[keys[i]].id)
+            document.createTextNode(refactorableData[i].id)
         );
 
         refactorables.appendChild(refactorable);
