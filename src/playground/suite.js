@@ -309,41 +309,6 @@ class BenchResultView {
     }
 
     render(newResult = this.result, compareResult = this.compare) {
-        const newResultFrames = (newResult.frames ? newResult.frames : []);
-
-        const blockFunctionFrame = newResultFrames
-            .find(frame => frame.name === 'blockFunction');
-        const stepThreadsInnerFrame = newResultFrames
-            .find(frame => frame.name === 'Sequencer.stepThreads#inner');
-
-        const blocksPerSecond = blockFunctionFrame ?
-            (blockFunctionFrame.executions /
-                (stepThreadsInnerFrame.totalTime / 1000)) | 0 :
-            0;
-        const stepsPerSecond = stepThreadsInnerFrame ?
-            (stepThreadsInnerFrame.executions /
-                (stepThreadsInnerFrame.totalTime / 1000)) | 0 :
-            0;
-
-        const compareResultFrames = (
-            compareResult && compareResult.frames ?
-                compareResult.frames :
-                []
-        );
-        const blockFunctionCompareFrame = compareResultFrames
-            .find(frame => frame.name === 'blockFunction');
-        const stepThreadsInnerCompareFrame = compareResultFrames
-            .find(frame => frame.name === 'Sequencer.stepThreads#inner');
-
-        const compareBlocksPerSecond = blockFunctionCompareFrame ?
-            (blockFunctionCompareFrame.executions /
-                (stepThreadsInnerCompareFrame.totalTime / 1000)) | 0 :
-            0;
-        const compareStepsPerSecond = stepThreadsInnerCompareFrame ?
-            (stepThreadsInnerCompareFrame.executions /
-                (stepThreadsInnerCompareFrame.totalTime / 1000)) | 0 :
-            0;
-
         const statusName = viewNames[newResult.status];
 
         this.dom.className = `result-view ${
@@ -354,20 +319,6 @@ class BenchResultView {
         if (newResult.status === BENCH_STATUS.COMPLETE) {
             url = `index.html#view/${btoa(JSON.stringify(newResult))}`;
         }
-        let compareUrl = url;
-        if (compareResult && compareResult) {
-            compareUrl =
-                `index.html#view/${btoa(JSON.stringify(compareResult))}`;
-        }
-        let compareHTML = '';
-        if (stepThreadsInnerFrame && stepThreadsInnerCompareFrame) {
-            compareHTML = `<a href="${compareUrl}" target="_blank">
-                <div class="result-status">
-                <div>${compareStepsPerSecond}</div>
-                <div>${compareBlocksPerSecond}</div>
-                </div>
-            </a>`;
-        }
 
         this.dom.innerHTML = `
             <div class="fixture-project">
@@ -375,19 +326,7 @@ class BenchResultView {
                     >${newResult.fixture.projectId}</a>
             </div>
             <div class="result-status">
-                <div>${stepThreadsInnerFrame ? `steps/s` : ''}</div>
-                <div>${blockFunctionFrame ? `blocks/s` : statusName}</div>
-            </div>
-            <a href="${stepThreadsInnerFrame ? url : ''}" target="_blank">
-                <div class="result-status">
-                <div>${stepThreadsInnerFrame ? `${stepsPerSecond}` : ''}</div>
-                <div>${blockFunctionFrame ? `${blocksPerSecond}` : ''}</div>
-                </div>
-            </a>
-            ${compareHTML}
-            <div class="">
-            Run for ${newResult.fixture.recordingTime / 1000} seconds after
-            ${newResult.fixture.warmUpTime / 1000} seconds
+                <div>${statusName}</div>
             </div>
 
             <div class="">
@@ -418,6 +357,7 @@ class BenchSuiteResultView {
 
         suite.on('result', result => {
             this.views[result.fixture.id].update(result);
+            console.log("update bench result view");
         });
     }
 
@@ -451,6 +391,7 @@ class BenchSuiteResultView {
         for (const fixture of this.suite.fixtures) {
             this.dom.appendChild(this.views[fixture.id].render().dom);
         }
+        console.log("finish");
 
         return this;
     }
@@ -528,11 +469,11 @@ window.onload = function () {
         recordingTime: 3000
     }));
 
-    // suite.add(new BenchFixture({
-    //     projectId: 247507535,
-    //     warmUpTime: 1000,
-    //     recordingTime: 3000
-    // }));
+    suite.add(new BenchFixture({
+        projectId: 247507535,
+        warmUpTime: 1000,
+        recordingTime: 3000
+    }));
 
 
 
@@ -559,13 +500,6 @@ window.onload = function () {
             warmUpTime: 0,
             recordingTime: 5000
         }));
-
-        suite.add(new BenchFixture({
-            projectId,
-            warmUpTime: 5000,
-            recordingTime: 5000
-        }));
-
     };
 
 
