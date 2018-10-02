@@ -235,8 +235,6 @@ class ProfilerRun {
         this.report = {};
 
 
-        this.firstTimeWorkspaceUpdate = true;
-
         vm.runtime.enableProfiling();
         const profiler = this.profiler = vm.runtime.profiler;
         vm.runtime.profiler = null;
@@ -445,7 +443,7 @@ const runBenchmark = function () {
     const projectId = loadProject();
 
     const sendAnalysisRequest = function () {
-        const url = "http://localhost:8080/refactor";
+        const url = "http://localhost:8080/discover";
         return new Promise(function (resolve, reject) {
 
             resolve(getProgramXml());
@@ -464,14 +462,14 @@ const runBenchmark = function () {
         }).then(response => response.json());
     }
 
-
+    let firstTimeWorkspaceUpdate = true;
 
     vm.on('workspaceUpdate', () => {
-        // if (this.firstTimeWorkspaceUpdate) {
-        //     this.firstTimeWorkspaceUpdate = false;
-        // } else {
-        //     return;
-        // }
+        if (firstTimeWorkspaceUpdate) {
+            firstTimeWorkspaceUpdate = false;
+        } else {
+            return;
+        }
 
         window.parent.postMessage({
             type: 'BENCH_MESSAGE_LOADING'
@@ -492,6 +490,14 @@ const runBenchmark = function () {
                     //programmatically select refactorable to execute
                     selectRefactorableDom.selectedIndex = i;
                     selectRefactorableDom.dispatchEvent(new Event('change'));
+                    //select target
+                    let refactoringTarget = json['refactorables'][i]["target"];
+                    if(Scratch.vm.editingTarget.getName()!=refactoringTarget){
+                        console.log("switch target to:"+refactoringTarget);
+                        let targetId = Scratch.vm.runtime.targets.filter(t=>t.getName()===refactoringTarget)[0].id;
+                        Scratch.vm.setEditingTarget(targetId);
+                    }
+
 
                     projectReport['metrics'] = json['metrics'];
                     let initialReport = json['refactorables'][i].report;
@@ -620,7 +626,6 @@ const runBenchmark = function () {
 };
 
 const renderRefactorables = function (refactorables, data, workspace, report) {
-    // var keys = Object.keys(data['refactorables']);
     var refactorableData = data['refactorables'];
 
     for (let i = 0; i < refactorableData.length; i++) {
@@ -635,7 +640,7 @@ const renderRefactorables = function (refactorables, data, workspace, report) {
     }
 
     refactorables.onchange = function () {
-        // do nothing
+        //do nothing for now
     };
 
     return refactorables;
