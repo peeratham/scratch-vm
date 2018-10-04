@@ -293,6 +293,7 @@ class ProfilerRun {
                 if (failures.length > 0) {
                     this.report.success = false;
                 }
+                //TODO: Scratch.vm.runtime.getTargetForStage().lookupVariableById(vid).value
 
                 this.vm.runtime.profiler = null;
                 resolve();
@@ -480,6 +481,7 @@ const runBenchmark = function () {
 
         sendAnalysisRequest().then(json => {
             //TODO: record roundtrip for whole project analysis request
+            console.log(json);
             const refactorables = document.getElementById('refactorables');
             let selectRefactorableDom = renderRefactorables(refactorables, json, Scratch.workspace, {})
             return { json, selectRefactorableDom};
@@ -507,7 +509,15 @@ const runBenchmark = function () {
                     let refactorable_id = initialReport.refactorable_id = selectRefactorableDom.value;
                     //START timer
                     const t0 = performance.now();
-                    Scratch.workspace.blockTransformer.doTransform(json['refactorables'][i]);
+                    try{
+                        for (var action of json['refactorables'][i].transforms) {
+                            await Scratch.workspace.blockTransformer.executeAction(action);
+                            //synchronous for now to make sure vm update its internal representation correclty in sequence of the applied transformation
+                            await Blockly.Events.fireNow_();    
+                        }
+                    }catch(err){
+                        console.log(err);
+                    }
                     //STOP timer
                     const t1 = performance.now();
                     initialReport.resp_time = t1 - t0;
@@ -516,11 +526,11 @@ const runBenchmark = function () {
                     let count = 0;
                     const maxCoverageRunAttempts = 3;
                     
-                    while(profilerRun.coverage()<0.8 && count < maxCoverageRunAttempts){
+                    // while(profilerRun.coverage()<0.8 && count < maxCoverageRunAttempts){
                         console.log("coverage:"+profilerRun.coverage());
                         await profilerRun.run();
                         count++;
-                    }
+                    // }
                     
                     console.log("prepare final report");
                     profilerRun.stats.update(profilerRun.profiler.blockIdRecords);
@@ -530,7 +540,7 @@ const runBenchmark = function () {
                     
                     //clean up (undo changes)
                     if(refactorable_id!=="test_setup"){
-                        await Scratch.workspace.undo();
+                        // await Scratch.workspace.undo();
                     }
                 }
                 // finalize and send project report to benchmark suite
