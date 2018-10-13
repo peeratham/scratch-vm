@@ -391,7 +391,7 @@ class BenchSuiteResultView {
         for (const fixture of this.suite.fixtures) {
             this.dom.appendChild(this.views[fixture.id].render().dom);
         }
-        console.log("finish");
+
 
         return this;
     }
@@ -448,32 +448,60 @@ window.download = function (_this) {
     _this.href = URL.createObjectURL(blob);
 };
 
+
+/**
+First rename directory to replace whitespace with underscore
+To create directory with the same name as the zip (without .sb3)
+ and unzip each file into the created directory
+find -name "* *" -type f | rename 's/ /_/g'
+for x in ./*.sb3; do
+  mkdir "${x%.*}" && unzip "$x" -d "${x%.*}"
+done
+ */
+// To get a comma separated string of directory names in the current directory
+// for i in $(ls -d */); do echo ${i%%/}; done | sed 's/\(.*\)/"\1"/g'|paste -d, -s -
+
+
 window.onload = function () {
     suite = new BenchSuite();
 
     // suite.add(new BenchFixture({
-    //     projectId: 216105416,
+    //     projectId: 'music',
     //     warmUpTime: 0,
     //     recordingTime: 2000
+    // }));
+    let pass = [];
+    let bugs = [];
+    let small_projects = [
+        // "Scratch_Project_5","SS_Scratch_Project_10","Scratch_Project_12",
+        // "SS_Scratch_Project_14",
+        // "SS_Scratch_Project_15",
+        // "SS_Scratch_Project_16",
+        // "SS_Scratch_Project_17",
+        // "SS_Scratch_Project_18",
+       "SS_Scratch_Project_8",
+        // "SS_Scratch_Project_9"
+    ];
+    
+    for (const proj of small_projects) {
+        suite.add(new BenchFixture({
+            projectId: proj,
+            warmUpTime: 1000,
+            recordingTime: 3000
+        }));
+    }
+    
+    // suite.add(new BenchFixture({
+    //     projectId: 247520139,
+    //     warmUpTime: 1000,
+    //     recordingTime: 3000
     // }));
 
     // suite.add(new BenchFixture({
     //     projectId: 247507535,
-    //     warmUpTime: 0,
-    //     recordingTime: 2000
+    //     warmUpTime: 1000,
+    //     recordingTime: 3000
     // }));
-
-    suite.add(new BenchFixture({
-        projectId: 247520139,
-        warmUpTime: 1000,
-        recordingTime: 3000
-    }));
-
-    suite.add(new BenchFixture({
-        projectId: 247507535,
-        warmUpTime: 1000,
-        recordingTime: 3000
-    }));
 
 
 

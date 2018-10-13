@@ -21,9 +21,6 @@ const setShareLink = function (json) {
 
 const loadProject = function () {
     let id = location.hash.substring(1).split(',')[0];
-    if (id.length < 1 || !isFinite(id)) {
-        id = projectInput.value;
-    }
     Scratch.vm.downloadProjectId(id);
     return id;
 };
@@ -38,7 +35,6 @@ const getProgramXml = function () {
         const variables = Object.keys(variableMap).map(k => variableMap[k]);
         const xmlString = `<${currTarget.isStage ? "stage " : "sprite "} name="${currTarget.getName()}"><xml><variables>${variables.map(v => v.toXML()).join()}</variables>${currTarget.blocks.toXML()}</xml></${currTarget.isStage ? "stage" : "sprite"}>`;
 
-        //assembling
         targets += xmlString;
     }
     var str = `<program>${targets}</program>`;
@@ -51,7 +47,7 @@ const getProgramXml = function () {
 
 const getLocalProjectUrl = function (asset) {
     const assetIdParts = asset.assetId.split('.');
-    const assetUrlParts = [LOCAL_PROJECT_SERVER, assetIdParts[0] + '.sb3_FILES/', 'project.json'];
+    const assetUrlParts = [LOCAL_PROJECT_SERVER, assetIdParts[0] + '/', 'project.json'];
     if (assetIdParts[1]) {
         assetUrlParts.push(assetIdParts[1]);
     }
@@ -61,7 +57,7 @@ const getLocalProjectUrl = function (asset) {
 const getLocalAssetUrl = function (asset) {
     const assetUrlParts = [
         LOCAL_ASSET_SERVER,
-        location.hash.substring(1).split(",")[0] + '.sb3_FILES/',
+        location.hash.substring(1).split(",")[0] + '/',
         asset.assetId,
         '.',
         asset.dataFormat
@@ -324,16 +320,6 @@ class ProfilerRun {
     }
 }
 
-const setupResultTable = function (div) {
-    let txt = "<table border='0'>"
-    // header
-
-
-    txt += "</table>";
-    div.innerHTML = txt;
-}
-
-
 /**
  * Run the benchmark with given parameters in the location's hash field or
  * using defaults.
@@ -346,7 +332,12 @@ const runBenchmark = function () {
 
     // Receipt of new block XML for the selected target.
     vm.on('workspaceUpdate', data => {
+        //define extension blocks
+        if(Scratch.vm.runtime._blockInfo.length>0){
+            Blockly.defineBlocksWithJsonArray(Scratch.vm.runtime._blockInfo[0].blocks.map(blockInfo=>blockInfo.json).filter(x=>x));
+        }
         workspace.clear();
+        Blockly.Events.recordUndo = false;
         const dom = window.Blockly.Xml.textToDom(data.xml);
         window.Blockly.Xml.domToWorkspace(dom, workspace);
     });
@@ -376,7 +367,6 @@ const runBenchmark = function () {
         vm.setEditingTarget(this.value);
     };
 
-    // instantiate scratch-blocks
     const workspace = window.Blockly.inject('blocks', {
         comments: true,
         disable: false,
@@ -439,7 +429,7 @@ const runBenchmark = function () {
     maxRecordedTime = 1000;
 
     const resultDiv = document.getElementById('profile-refactoring-result');
-    setupResultTable(resultDiv);
+    resultDiv.innerHTML = "<table border='0'></table>"
 
     const projectId = loadProject();
 
@@ -456,7 +446,8 @@ const runBenchmark = function () {
                 cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
                 headers: {
                     "Content-Type": "text/xml",
-                    "id": projectId+"-extractvar"
+                    "id": projectId+"-extractvar",
+                    "type": "duplicate-expression"
                 },
                 body: xml, // body data type must match "Content-Type" header
             });
@@ -464,6 +455,7 @@ const runBenchmark = function () {
     }
 
     let firstTimeWorkspaceUpdate = true;
+    let manualMode = false;
 
     vm.on('workspaceUpdate', () => {
         if (firstTimeWorkspaceUpdate) {
@@ -476,24 +468,25 @@ const runBenchmark = function () {
             type: 'BENCH_MESSAGE_LOADING'
         }, '*');
 
-        const projectReport = {"project_id": projectId, "refactorables":[]};
+        const projectReport = {"project_id": projectId, "improvables":[]};
 
 
         sendAnalysisRequest().then(json => {
-            //TODO: record roundtrip for whole project analysis request
-            console.log(json);
-            const refactorables = document.getElementById('refactorables');
+            const refactorables = document.getElementById('improvables');
             let selectRefactorableDom = renderRefactorables(refactorables, json, Scratch.workspace, {})
             return { json, selectRefactorableDom};
         }).then(({ json, selectRefactorableDom}) => {
-            
+            Blockly.Events.recordUndo = true;
+            if(manualMode){
+                return;
+            }
             (async function refactorEvalLoop() {
                 for (let i = 0; i < selectRefactorableDom.length; i++) {
                     //programmatically select refactorable to execute
                     selectRefactorableDom.selectedIndex = i;
                     selectRefactorableDom.dispatchEvent(new Event('change'));
                     //select target
-                    let refactoringTarget = json['refactorables'][i]["target"];
+                    let refactoringTarget = json['improvables'][i]["target"];
                     if(Scratch.vm.editingTarget.getName()!=refactoringTarget){
                         console.log("switch target to:"+refactoringTarget);
                         let targetId = Scratch.vm.runtime.targets.filter(t=>t.getName()===refactoringTarget)[0].id;
@@ -501,23 +494,27 @@ const runBenchmark = function () {
                     }
 
 
-                    projectReport['metrics'] = json['metrics'];
-                    let initialReport = json['refactorables'][i].report;
+                    projectReport['project_metrics'] = json['project_metrics'];
+                    let initialReport = json['improvables'][i].info;
                     let targetInvariantChecks = new Set(["T?,F,g{dyE*rx3/EdX^H","_assertion_failed","invariant02"]);
                     let profilerRun = new ProfilerRun({ vm, warmUpTime, maxRecordedTime, projectId, initialReport, resultDiv,targetInvariantChecks});
                     
                     let refactorable_id = initialReport.refactorable_id = selectRefactorableDom.value;
                     //START timer
                     const t0 = performance.now();
+
                     try{
-                        for (var action of json['refactorables'][i].transforms) {
+                        for (var action of json['improvables'][i].transforms) {
                             await Scratch.workspace.blockTransformer.executeAction(action);
                             //synchronous for now to make sure vm update its internal representation correclty in sequence of the applied transformation
-                            await Blockly.Events.fireNow_();    
+                            // Blockly.Events.disable();
+                            await Blockly.Events.fireNow_();
+                            // Blockly.Events.enable();
                         }
                     }catch(err){
                         console.log(err);
-                    }
+                    } 
+
                     //STOP timer
                     const t1 = performance.now();
                     initialReport.resp_time = t1 - t0;
@@ -536,11 +533,14 @@ const runBenchmark = function () {
                     profilerRun.stats.update(profilerRun.profiler.blockIdRecords);
                     
                     profilerRun.resultTable.render();
-                    projectReport.refactorables.push(initialReport);
+                    projectReport["improvables"].push(initialReport);
                     
                     //clean up (undo changes)
                     if(refactorable_id!=="test_setup"){
-                        // await Scratch.workspace.undo();
+                        while(Scratch.workspace.hasUndoStack()){
+                            await Scratch.workspace.undo();
+                            await Blockly.Events.fireNow_();
+                        }
                     }
                 }
                 // finalize and send project report to benchmark suite
@@ -636,9 +636,11 @@ const runBenchmark = function () {
 };
 
 const renderRefactorables = function (refactorables, data, workspace, report) {
-    var refactorableData = data['refactorables'];
+    var refactorableData = data['improvables'];
+    let refactorableKV = {};
 
     for (let i = 0; i < refactorableData.length; i++) {
+        refactorableKV[refactorableData[i].id] = refactorableData[i];
         const refactorable = document.createElement('option');
         refactorable.setAttribute('value', refactorableData[i].id);
 
@@ -650,6 +652,7 @@ const renderRefactorables = function (refactorables, data, workspace, report) {
     }
 
     refactorables.onchange = function () {
+        console.log(refactorableKV[this.value]);
         //do nothing for now
     };
 
