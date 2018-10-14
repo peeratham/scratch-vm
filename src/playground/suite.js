@@ -473,14 +473,16 @@ window.onload = function () {
     let pass = [];
     let bugs = [];
     let small_projects = [
-        // "Scratch_Project_5","SS_Scratch_Project_10","Scratch_Project_12",
-        // "SS_Scratch_Project_14",
-        // "SS_Scratch_Project_15",
-        // "SS_Scratch_Project_16",
-        // "SS_Scratch_Project_17",
-        // "SS_Scratch_Project_18",
+        "Scratch_Project_5",
+        "SS_Scratch_Project_10",
+        "Scratch_Project_12",
+        "SS_Scratch_Project_14",
+        "SS_Scratch_Project_15",
+        "SS_Scratch_Project_16",
+        "SS_Scratch_Project_17",
+        "SS_Scratch_Project_18",
        "SS_Scratch_Project_8",
-        // "SS_Scratch_Project_9"
+        "SS_Scratch_Project_9"
     ];
     
     for (const proj of small_projects) {

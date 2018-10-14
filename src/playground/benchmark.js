@@ -21,6 +21,7 @@ const setShareLink = function (json) {
 
 const loadProject = function () {
     let id = location.hash.substring(1).split(',')[0];
+    projectInput.value = id;
     Scratch.vm.downloadProjectId(id);
     return id;
 };
@@ -221,7 +222,7 @@ class RefactoringTable {
 }
 
 class ProfilerRun {
-    constructor({ vm, maxRecordedTime, warmUpTime, projectId, initialReport, resultDiv, targetInvariantChecks}) {
+    constructor({ vm, maxRecordedTime, warmUpTime, projectId, initialReport, resultDiv, targetInvariantChecks }) {
         this.vm = vm;
         this.maxRecordedTime = maxRecordedTime;
         this.warmUpTime = warmUpTime;
@@ -242,7 +243,7 @@ class ProfilerRun {
             maxRecordedTime
         });
 
-        const stats = this.stats = new Refactorings(profiler,initialReport);
+        const stats = this.stats = new Refactorings(profiler, initialReport);
         this.resultTable = new RefactoringTable({
             containerDom: resultDiv,
             profiler,
@@ -297,10 +298,10 @@ class ProfilerRun {
         });
     }
 
-    coverage(){
+    coverage() {
         let executedBlocks = new Set(Object.keys(this.profiler.blockIdRecords));
         let uncoveredChecks = new Set([...this.targetInvariantChecks].filter(x => !executedBlocks.has(x)));
-        let coverage = (this.targetInvariantChecks.size - uncoveredChecks.size)/this.targetInvariantChecks.size;
+        let coverage = (this.targetInvariantChecks.size - uncoveredChecks.size) / this.targetInvariantChecks.size;
         return coverage;
     }
 
@@ -319,7 +320,8 @@ class ProfilerRun {
         // });
     }
 }
-
+let warmUpTime = 2000;
+let maxRecordedTime = 3000;
 /**
  * Run the benchmark with given parameters in the location's hash field or
  * using defaults.
@@ -330,16 +332,32 @@ const runBenchmark = function () {
     const vm = new window.VirtualMachine();
     Scratch.vm = vm;
 
+    let firstTimeWorkspaceUpdate = true;
+
     // Receipt of new block XML for the selected target.
+    // workspaceUpdate after targetUpdate
     vm.on('workspaceUpdate', data => {
         //define extension blocks
-        if(Scratch.vm.runtime._blockInfo.length>0){
-            Blockly.defineBlocksWithJsonArray(Scratch.vm.runtime._blockInfo[0].blocks.map(blockInfo=>blockInfo.json).filter(x=>x));
+        if (Scratch.vm.runtime._blockInfo.length > 0) {
+            Blockly.defineBlocksWithJsonArray(Scratch.vm.runtime._blockInfo[0].blocks.map(blockInfo => blockInfo.json).filter(x => x));
         }
         workspace.clear();
         Blockly.Events.recordUndo = false;
         const dom = window.Blockly.Xml.textToDom(data.xml);
         window.Blockly.Xml.domToWorkspace(dom, workspace);
+        if (firstTimeWorkspaceUpdate) {
+            firstTimeWorkspaceUpdate = false;
+            vm.emit('workspaceReady', data);
+        }
+    });
+
+    const xmlButton = document.getElementById('getXml');
+    xmlButton.addEventListener("click",function(){
+        let xml = Scratch.vm.editingTarget.blocks.toXML();
+        let str = xml.replace(/\s+/g, ' '); // Keep only one space character
+        str = str.replace(/>\s*/g, '>');  // Remove space after >
+        str = str.replace(/\s*</g, '<');  // Remove space before <
+        console.log(str);
     });
 
     // Receipt of new list of targets, selected target update.
@@ -397,8 +415,6 @@ const runBenchmark = function () {
     flyoutWorkspace.addChangeListener(Scratch.vm.flyoutBlockListener);
     flyoutWorkspace.addChangeListener(Scratch.vm.monitorBlockListener);
 
-
-
     vm.setTurboMode(false);  //turbo
 
     const storage = new ScratchStorage(); /* global ScratchStorage */
@@ -415,8 +431,7 @@ const runBenchmark = function () {
             .innerText = progress.complete;
     }).on(storage);
 
-    let warmUpTime = 2000;
-    let maxRecordedTime = 3000;
+
 
     if (location.hash) {
         const split = location.hash.substring(1).split(',');
@@ -433,128 +448,15 @@ const runBenchmark = function () {
 
     const projectId = loadProject();
 
-    const sendAnalysisRequest = function () {
-        const url = "http://localhost:8080/discover";
-        return new Promise(function (resolve, reject) {
-
-            resolve(getProgramXml());
-
-        }).then(function (xml) {
-            return fetch(url, {
-                method: "POST", // *GET, POST, PUT, DELETE, etc.
-                mode: "cors", // no-cors, cors, *same-origin
-                cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-                headers: {
-                    "Content-Type": "text/xml",
-                    "id": projectId+"-extractvar",
-                    "type": "duplicate-expression"
-                },
-                body: xml, // body data type must match "Content-Type" header
-            });
-        }).then(response => response.json());
-    }
-
-    let firstTimeWorkspaceUpdate = true;
-    let manualMode = false;
-
-    vm.on('workspaceUpdate', () => {
-        if (firstTimeWorkspaceUpdate) {
-            firstTimeWorkspaceUpdate = false;
-        } else {
-            return;
-        }
-
-        window.parent.postMessage({
-            type: 'BENCH_MESSAGE_LOADING'
-        }, '*');
-
-        const projectReport = {"project_id": projectId, "improvables":[]};
 
 
-        sendAnalysisRequest().then(json => {
-            const refactorables = document.getElementById('improvables');
-            let selectRefactorableDom = renderRefactorables(refactorables, json, Scratch.workspace, {})
-            return { json, selectRefactorableDom};
-        }).then(({ json, selectRefactorableDom}) => {
-            Blockly.Events.recordUndo = true;
-            if(manualMode){
-                return;
-            }
-            (async function refactorEvalLoop() {
-                for (let i = 0; i < selectRefactorableDom.length; i++) {
-                    //programmatically select refactorable to execute
-                    selectRefactorableDom.selectedIndex = i;
-                    selectRefactorableDom.dispatchEvent(new Event('change'));
-                    //select target
-                    let refactoringTarget = json['improvables'][i]["target"];
-                    if(Scratch.vm.editingTarget.getName()!=refactoringTarget){
-                        console.log("switch target to:"+refactoringTarget);
-                        let targetId = Scratch.vm.runtime.targets.filter(t=>t.getName()===refactoringTarget)[0].id;
-                        Scratch.vm.setEditingTarget(targetId);
-                    }
 
+    let manualMode = true;
 
-                    projectReport['project_metrics'] = json['project_metrics'];
-                    let initialReport = json['improvables'][i].info;
-                    let targetInvariantChecks = new Set(["T?,F,g{dyE*rx3/EdX^H","_assertion_failed","invariant02"]);
-                    let profilerRun = new ProfilerRun({ vm, warmUpTime, maxRecordedTime, projectId, initialReport, resultDiv,targetInvariantChecks});
-                    
-                    let refactorable_id = initialReport.refactorable_id = selectRefactorableDom.value;
-                    //START timer
-                    const t0 = performance.now();
-
-                    try{
-                        for (var action of json['improvables'][i].transforms) {
-                            await Scratch.workspace.blockTransformer.executeAction(action);
-                            //synchronous for now to make sure vm update its internal representation correclty in sequence of the applied transformation
-                            // Blockly.Events.disable();
-                            await Blockly.Events.fireNow_();
-                            // Blockly.Events.enable();
-                        }
-                    }catch(err){
-                        console.log(err);
-                    } 
-
-                    //STOP timer
-                    const t1 = performance.now();
-                    initialReport.resp_time = t1 - t0;
-                    await profilerRun.run();
-
-                    let count = 0;
-                    const maxCoverageRunAttempts = 3;
-                    
-                    // while(profilerRun.coverage()<0.8 && count < maxCoverageRunAttempts){
-                        console.log("coverage:"+profilerRun.coverage());
-                        await profilerRun.run();
-                        count++;
-                    // }
-                    
-                    console.log("prepare final report");
-                    profilerRun.stats.update(profilerRun.profiler.blockIdRecords);
-                    
-                    profilerRun.resultTable.render();
-                    projectReport["improvables"].push(initialReport);
-                    
-                    //clean up (undo changes)
-                    if(refactorable_id!=="test_setup"){
-                        while(Scratch.workspace.hasUndoStack()){
-                            await Scratch.workspace.undo();
-                            await Blockly.Events.fireNow_();
-                        }
-                    }
-                }
-                // finalize and send project report to benchmark suite
-                console.log("finalize: ");
-                console.log(projectReport);
-                window.parent.postMessage({
-                    type: 'BENCH_MESSAGE_COMPLETE',
-                    projectReport: projectReport
-                }, '*');
-            })();
-            
-        }).then(()=>{
-            
-        });
+    vm.on('workspaceReady', data => {
+        let evaluator = new RefactoringEvaluator(projectId, data, manualMode, resultDiv);
+            evaluator.runAll();
+        
     });
 
 
@@ -635,31 +537,203 @@ const runBenchmark = function () {
     vm.start();
 };
 
-const renderRefactorables = function (refactorables, data, workspace, report) {
-    var refactorableData = data['improvables'];
-    let refactorableKV = {};
+class RefactoringEvaluator {
+    constructor(projectId, data, manualMode, resultDiv) {
+        this.projectId = projectId;
+        this.data = data;
+        this.manualMode = manualMode;
+        this.resultDiv = resultDiv
+        this.analysisInfo = null;
+    }
+    async getAnalysisInfo() {
+        if(this.analysisInfo){
+            return this.analysisInfo;
+        }
+        const url = "http://localhost:8080/discover";
+        const xml = await new Promise(function (resolve, reject) {
+            resolve(getProgramXml());
+        });
+        
+        const response = await fetch(url, {
+            method: "POST",
+            mode: "cors",
+            cache: "no-cache",
+            headers: {
+                "Content-Type": "text/xml",
+                "id": this.projectId,
+                "type": "duplicate-code"
+            },
+            body: xml,
+        });
 
-    for (let i = 0; i < refactorableData.length; i++) {
-        refactorableKV[refactorableData[i].id] = refactorableData[i];
-        const refactorable = document.createElement('option');
-        refactorable.setAttribute('value', refactorableData[i].id);
-
-        refactorable.appendChild(
-            document.createTextNode(refactorableData[i].id)
-        );
-
-        refactorables.appendChild(refactorable);
+        this.analysisInfo = response.json();
+        
+        return this.analysisInfo;
     }
 
-    refactorables.onchange = function () {
-        console.log(refactorableKV[this.value]);
-        //do nothing for now
-    };
+    renderRefactorables(refactorables, data) {
+        var refactorableData = data['improvables'];
+        let refactorableKV = {};
 
-    return refactorables;
+        for (let i = 0; i < refactorableData.length; i++) {
+            refactorableKV[refactorableData[i].id] = refactorableData[i];
+            const refactorable = document.createElement('option');
+            refactorable.setAttribute('value', refactorableData[i].id);
+
+            refactorable.appendChild(
+                document.createTextNode(refactorableData[i].id)
+            );
+
+            refactorables.appendChild(refactorable);
+        }
+
+        refactorables.onchange = ()=> {
+            console.log(refactorableKV[this.value]);
+ 
+            
+            (async () => {
+                //undo from previous refactoring transformation if applicable
+                while (Scratch.workspace.hasUndoStack()) {
+                    await Scratch.workspace.undo();
+                    await Blockly.Events.fireNow_();
+                }
+
+
+                let refactorable = refactorableKV[refactorables.value];
+                let refactoringTarget = refactorable["target"];
+                // this.switchTarget(refactorables.selectedIndex, refactorables, refactoringTarget);
+                if (Scratch.vm.editingTarget.getName() != refactoringTarget) {
+                    console.log("switch target to:" + refactoringTarget);
+                    let targetId = Scratch.vm.runtime.targets.filter(t => t.getName() === refactoringTarget)[0].id;
+                    Scratch.vm.setEditingTarget(targetId);
+                }
+                
+                let report = {};
+
+                await this.refactor(refactorable.transforms, report);
+                // await this.runProfile(initialReport);
+
+                //clean up (undo changes)
+
+             
+
+                console.log(report);
+              
+            })();
+            
+        };
+
+        return refactorables;
+    }
+
+
+    switchTarget(i, selectRefactorableDom, refactoringTarget) {
+        //programmatically select refactorable to execute
+        selectRefactorableDom.selectedIndex = i;
+        selectRefactorableDom.dispatchEvent(new Event('change'));
+        //select target
+
+        if (Scratch.vm.editingTarget.getName() != refactoringTarget) {
+            console.log("switch target to:" + refactoringTarget);
+            let targetId = Scratch.vm.runtime.targets.filter(t => t.getName() === refactoringTarget)[0].id;
+            Scratch.vm.setEditingTarget(targetId);
+        }
+    }
+
+    async refactor(transforms,initialReport){
+        console.log(transforms);
+        //START timer
+        const t0 = performance.now();
+
+        try {
+            for (var action of transforms) {
+                await Scratch.workspace.blockTransformer.executeAction(action);
+                //synchronous for now to make sure vm update its internal representation correclty in sequence of the applied transformation
+                await Blockly.Events.fireNow_();
+            }
+        } catch (err) {
+            throw err;
+        }
+
+        //STOP timer
+        const t1 = performance.now();
+        
+        initialReport.resp_time = t1 - t0;
+
+    }
+
+    async runProfile(initialReport){
+        let targetInvariantChecks = new Set(["T?,F,g{dyE*rx3/EdX^H", "_assertion_failed", "invariant02"]);
+        let profilerRun = new ProfilerRun({ vm: Scratch.vm, warmUpTime, maxRecordedTime, projectId: this.projectId, initialReport, resultDiv: this.resultDiv, targetInvariantChecks });
+        await profilerRun.run();
+
+        // repeat profile run for coverage
+        let count = 0;
+        const maxCoverageRunAttempts = 3;
+        // while(profilerRun.coverage()<0.8 && count < maxCoverageRunAttempts){
+        // console.log("coverage:" + profilerRun.coverage());
+        // await profilerRun.run();
+        // count++;
+        // }
+
+        //prepare final report for this refactoring
+        profilerRun.stats.update(profilerRun.profiler.blockIdRecords);
+        profilerRun.resultTable.render();
+    }
+
+    runAll() {
+        window.parent.postMessage({
+            type: 'BENCH_MESSAGE_LOADING'
+        }, '*');
+
+        const projectReport = { "project_id": this.projectId, "improvables": [] };
+
+        this.getAnalysisInfo().then(json => {
+            const refactorables = document.getElementById('improvables');
+            let selectRefactorableDom = this.renderRefactorables(refactorables, json,projectReport)
+            return { json, selectRefactorableDom };
+        })
+        .then(({ json, selectRefactorableDom }) => {
+            Blockly.Events.recordUndo = true;
+            if (this.manualMode) {
+                return;
+            }
+            (async () => {
+                for (let i = 0; i < selectRefactorableDom.length; i++) {
+                    let refactoringTarget = json['improvables'][i]["target"];
+                    this.switchTarget(i, selectRefactorableDom, refactoringTarget);
+
+                    projectReport['project_metrics'] = json['project_metrics'];
+                    let initialReport = json['improvables'][i].info;
+
+                    let refactorable_id = initialReport.refactorable_id = selectRefactorableDom.value;
+                    await this.refactor(json['improvables'][i].transforms, initialReport);
+                    await this.runProfile(initialReport);
+
+                    projectReport["improvables"].push(initialReport);
+
+                    //clean up (undo changes)
+
+                    while (Scratch.workspace.hasUndoStack()) {
+                        await Scratch.workspace.undo();
+                        await Blockly.Events.fireNow_();
+                    }
+
+                }
+                // finalize and send project report to benchmark suite
+                console.log(projectReport);
+                window.parent.postMessage({
+                    type: 'BENCH_MESSAGE_COMPLETE',
+                    projectReport: projectReport
+                }, '*');
+            })();
+
+        }).then(() => {
+
+        });
+    }
+
 }
-
-
 
 /**
  * Render previously run benchmark data.
