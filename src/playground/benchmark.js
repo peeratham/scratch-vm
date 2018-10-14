@@ -338,6 +338,7 @@ const runBenchmark = function () {
     // workspaceUpdate after targetUpdate
     vm.on('workspaceUpdate', data => {
         //define extension blocks
+        //todo: future don't define if already exists
         if (Scratch.vm.runtime._blockInfo.length > 0) {
             Blockly.defineBlocksWithJsonArray(Scratch.vm.runtime._blockInfo[0].blocks.map(blockInfo => blockInfo.json).filter(x => x));
         }
@@ -581,15 +582,15 @@ class RefactoringEvaluator {
             refactorable.setAttribute('value', refactorableData[i].id);
 
             refactorable.appendChild(
-                document.createTextNode(refactorableData[i].id)
+                document.createTextNode(refactorableData[i].target+":"+refactorableData[i].id)
             );
 
             refactorables.appendChild(refactorable);
         }
 
         refactorables.onchange = ()=> {
-            console.log(refactorableKV[this.value]);
- 
+            console.log(refactorables.value);
+            console.log(refactorableKV[refactorables.value]);
             
             (async () => {
                 //undo from previous refactoring transformation if applicable
@@ -609,8 +610,18 @@ class RefactoringEvaluator {
                 }
                 
                 let report = {};
-
-                await this.refactor(refactorable.transforms, report);
+                Blockly.Events.recordUndo = true;
+                try{
+                    await this.refactor(refactorable.transforms, report);
+                }catch(err){
+                    console.error(err.message);
+                    console.log("Try to restore workspace...");
+                    while (Scratch.workspace.hasUndoStack()) {
+                        await Scratch.workspace.undo();
+                        await Blockly.Events.fireNow_();
+                    }
+                    throw new Error("Error applying transformation");
+                }
                 // await this.runProfile(initialReport);
 
                 //clean up (undo changes)
@@ -700,6 +711,11 @@ class RefactoringEvaluator {
             }
             (async () => {
                 for (let i = 0; i < selectRefactorableDom.length; i++) {
+                    while (Scratch.workspace.hasUndoStack()) {
+                        await Scratch.workspace.undo();
+                        await Blockly.Events.fireNow_();
+                    }
+
                     let refactoringTarget = json['improvables'][i]["target"];
                     this.switchTarget(i, selectRefactorableDom, refactoringTarget);
 
@@ -714,10 +730,7 @@ class RefactoringEvaluator {
 
                     //clean up (undo changes)
 
-                    while (Scratch.workspace.hasUndoStack()) {
-                        await Scratch.workspace.undo();
-                        await Blockly.Events.fireNow_();
-                    }
+                    
 
                 }
                 // finalize and send project report to benchmark suite
