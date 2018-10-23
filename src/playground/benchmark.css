@@ -89,3 +89,11 @@ p {
     height: 300px;
     padding: 5px;
 }
+
+#improvables {
+    width: 150px;
+}
+
+#changesWalkThrough {
+    width: 300px;
+}

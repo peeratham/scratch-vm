@@ -1,10 +1,9 @@
 const Scratch = window.Scratch = window.Scratch || {};
-const LOCAL_ASSET_SERVER = 'http://localhost:8000/';
-const LOCAL_PROJECT_SERVER = 'http://localhost:8000/';
+
 
 const projectInput = document.querySelector('input');
 
-
+const manualMode = true;
 
 document.querySelector('.run')
     .addEventListener('click', () => {
@@ -12,180 +11,10 @@ document.querySelector('.run')
         location.reload();
     }, false);
 
-const setShareLink = function (json) {
-    document.querySelector('.share')
-        .href = `#view/${btoa(JSON.stringify(json))}`;
-    document.querySelectorAll('.share')[1]
-        .href = `suite.html`;
-};
-
-const loadProject = function () {
-    let id = location.hash.substring(1).split(',')[0];
-    projectInput.value = id;
-    Scratch.vm.downloadProjectId(id);
-    return id;
-};
-
-const getProgramXml = function () {
-    let targets = "";
-    const stageVariables = Scratch.vm.runtime.getTargetForStage().variables;
-    for (let i = 0; i < Scratch.vm.runtime.targets.length; i++) {
-        const currTarget = Scratch.vm.runtime.targets[i];
-        const currBlocks = currTarget.blocks._blocks;
-        const variableMap = currTarget.variables;
-        const variables = Object.keys(variableMap).map(k => variableMap[k]);
-        const xmlString = `<${currTarget.isStage ? "stage " : "sprite "} name="${currTarget.getName()}"><xml><variables>${variables.map(v => v.toXML()).join()}</variables>${currTarget.blocks.toXML()}</xml></${currTarget.isStage ? "stage" : "sprite"}>`;
-
-        targets += xmlString;
-    }
-    var str = `<program>${targets}</program>`;
-    str = str.replace(/\s+/g, ' '); // Keep only one space character
-    str = str.replace(/>\s*/g, '>');  // Remove space after >
-    str = str.replace(/\s*</g, '<');  // Remove space before <
-
-    return str;
-}
-
-const getLocalProjectUrl = function (asset) {
-    const assetIdParts = asset.assetId.split('.');
-    const assetUrlParts = [LOCAL_PROJECT_SERVER, assetIdParts[0] + '/', 'project.json'];
-    if (assetIdParts[1]) {
-        assetUrlParts.push(assetIdParts[1]);
-    }
-    return assetUrlParts.join('');
-};
-
-const getLocalAssetUrl = function (asset) {
-    const assetUrlParts = [
-        LOCAL_ASSET_SERVER,
-        location.hash.substring(1).split(",")[0] + '/',
-        asset.assetId,
-        '.',
-        asset.dataFormat
-    ];
-    return assetUrlParts.join('');
-};
-
-class LoadingProgress {
-    constructor(callback) {
-        this.total = 0;
-        this.complete = 0;
-        this.callback = callback;
-    }
-
-    on(storage) {
-        const _this = this;
-        const _load = storage.webHelper.load;
-        storage.webHelper.load = function (...args) {
-            const result = _load.call(this, ...args);
-            _this.total += 1;
-            _this.callback(_this);
-            result.then(() => {
-                _this.complete += 1;
-                _this.callback(_this);
-            });
-            return result;
-        };
-    }
-}
-
-class IdStatView {
-    constructor(report) {    //should be name of refactoring
-        this.report = report;
-    }
-
-    update(failures) {
-        if (failures.length > 0) {
-            this.report.success = false;
-            this.report.failed_location = failures;
-        }
-    }
-
-    updateReport(key, value) {
-        this.report[key] = value;
-    }
-
-    renderSimpleJson(div) {
-        let table = div.getElementsByTagName("table")[0];
-        //if no table header yet
-        if (table.rows.length === 0) {
-            let txt = "<thead>";
-            txt += "<tr class='profile-count-refactoring-head'>";
-            for (var key in this.report) {
-                txt += "<th>" + key + "</th>";
-            }
-            txt += "</tr>";
-            txt += "<thead>";
-            let header = table.insertRow(0);
-            header.innerHTML = txt;
-        }
-
-        // body        
-        let row = table.insertRow(table.rows.length);
-        let rowtxt = "<tr>";
-        for (var key in this.report) {
-            rowtxt += "<td>" + this.report[key] + "</td>";
-        }
-        rowtxt += "</tr>";
-        row.innerHTML = rowtxt;
-
-    }
-}
-
-class RunningStats {
-    constructor(profiler) {
-        this.stepThreadsInnerId = profiler.idByName('Sequencer.stepThreads#inner');
-        this.blockFunctionId = profiler.idByName('blockFunction');
-        this.stpeThreadsId = profiler.idByName('Sequencer.stepThreads');
-
-        this.recordedTime = 0;
-        this.executed = {
-            steps: 0,
-            blocks: 0
-        };
-    }
-
-    update(id, selfTime, totalTime) {
-        if (id === this.stpeThreadsId) {
-            this.recordedTime += totalTime;
-        } else if (id === this.stepThreadsInnerId) {
-            this.executed.steps++;
-        } else if (id === this.blockFunctionId) {
-            this.executed.blocks++;
-        }
-    }
-}
 
 const WORK_TIME = 0.75;
 
-class RunningStatsView {
-    constructor({ runningStats, maxRecordedTime, dom }) {
-        this.recordedTimeDom =
-            dom.getElementsByClassName('profile-count-amount-recorded')[0];
-        this.stepsLoopedDom =
-            dom.getElementsByClassName('profile-count-steps-looped')[0];
-        this.blocksExecutedDom =
-            dom.getElementsByClassName('profile-count-blocks-executed')[0];
 
-        this.maxRecordedTime = maxRecordedTime;
-        this.maxWorkedTime = maxRecordedTime * WORK_TIME;
-        this.runningStats = runningStats;
-    }
-
-    render() {
-        const {
-            runningStats,
-            recordedTimeDom,
-            stepsLoopedDom,
-            blocksExecutedDom
-        } = this;
-        const { executed } = runningStats;
-        const fractionWorked = runningStats.recordedTime / this.maxWorkedTime;
-        recordedTimeDom.innerText = `${(fractionWorked * 100).toFixed(1)} %`;
-        stepsLoopedDom.innerText = executed.steps;
-        blocksExecutedDom.innerText = executed.blocks;
-    }
-}
 
 class Refactorings {
     constructor(profiler, report) {
@@ -195,7 +24,7 @@ class Refactorings {
     }
 
     update(blockIdRecords) {
-        const failures = Object.keys(blockIdRecords).filter(k => k.startsWith("_assertion_failed"));
+        const failures = Object.keys(blockIdRecords).filter(k => k.startsWith("__inv_failure_counter"));
         this.stats.update(failures);
     }
 }
@@ -300,8 +129,11 @@ class ProfilerRun {
 
     coverage() {
         let executedBlocks = new Set(Object.keys(this.profiler.blockIdRecords));
-        let uncoveredChecks = new Set([...this.targetInvariantChecks].filter(x => !executedBlocks.has(x)));
-        let coverage = (this.targetInvariantChecks.size - uncoveredChecks.size) / this.targetInvariantChecks.size;
+        let covered_checks = Object.keys(this.profiler.blockIdRecords).filter(k => k.startsWith("@_invariant_check_"));
+        console.log(covered_checks);
+        let coverage =0.5;
+        // let uncoveredChecks = new Set([...this.targetInvariantChecks].filter(x => !executedBlocks.has(x)));
+        // let coverage = (this.targetInvariantChecks.size - uncoveredChecks.size) / this.targetInvariantChecks.size;
         return coverage;
     }
 
@@ -352,14 +184,100 @@ const runBenchmark = function () {
         }
     });
 
-    const xmlButton = document.getElementById('getXml');
-    xmlButton.addEventListener("click",function(){
+    const xmlButton = document.getElementById('getTargetXml');
+    xmlButton.addEventListener("click", function () {
         let xml = Scratch.vm.editingTarget.blocks.toXML();
         let str = xml.replace(/\s+/g, ' '); // Keep only one space character
         str = str.replace(/>\s*/g, '>');  // Remove space after >
         str = str.replace(/\s*</g, '<');  // Remove space before <
+        str = str.replace(/"/g, "'");   //replace double quotes with single quotes
         console.log(str);
     });
+
+    const blockXmlButton = document.getElementById('getBlockXml');
+    blockXmlButton.addEventListener("click", function () {
+        if(Blockly.selected){
+            let block = Blockly.selected;
+            let dom = Blockly.Xml.blockToDom(block);
+            let xml = Blockly.Xml.domToText(dom);
+            let str = xml.replace(/\s+/g, ' '); // Keep only one space character
+            str = str.replace(/>\s*/g, '>');  // Remove space after >
+            str = str.replace(/\s*</g, '<');  // Remove space before <
+            str = str.replace(/"/g, "'"); //replace double quotes with single quotes
+            console.log(str);
+        }
+    });
+
+    const blockIdToFocusTextInput = document.getElementById('blockIdToFocusTextInput');
+    const centerOnBlockButton = document.getElementById('centerOnBlockButton');
+    centerOnBlockButton.addEventListener("click", function(){
+        let id = blockIdToFocusTextInput.value;
+        Blockly.getMainWorkspace().centerOnBlock(id);
+        setTimeout(function(){
+            Blockly.getMainWorkspace().reportValue(id,id);
+        },500)
+    });
+
+    const cleanUpButton = document.getElementById("cleanup");
+    cleanUpButton.addEventListener("click", function(){
+        Scratch.workspace.cleanUp();
+    });
+
+    const greenFlagButton = document.getElementById("greenFlag");
+    greenFlagButton.addEventListener("click", function(){
+        Scratch.vm.runtime.start();
+        Scratch.vm.runtime.greenFlag();
+    });
+
+    const stopButton = document.getElementById("stop");
+    stopButton.addEventListener("click", function(){
+        Scratch.vm.stopAll();
+    });
+
+    const profileButton = document.getElementById("profile");
+    profileButton.addEventListener("click", async function(){
+        const projectReport = Scratch.projectReport =  { "project_id": projectId, "improvables": [] };
+        return;
+        let targetInvariantChecks = new Set(["block_TKnelX","block_kEPt4r"]);
+
+        document.getElementById('improvables').value
+        let refactorable_id = document.getElementById('improvables').value;
+        projectReport['project_metrics'] = Scratch.json['project_metrics'];
+
+        let initialReport = {};
+        if(Scratch.refactorableKV[refactorable_id]){
+            initialReport = Scratch.refactorableKV[refactorable_id].info;
+        }
+        let profilerRun = Scratch.ProfileRun = new ProfilerRun({ vm: Scratch.vm, warmUpTime, maxRecordedTime:5000, projectId: projectId, initialReport:initialReport, resultDiv: resultDiv, targetInvariantChecks });
+        await profilerRun.run();
+        console.log("coverage:" + profilerRun.coverage());
+        
+        //prepare final report for this refactoring
+        profilerRun.stats.update(profilerRun.profiler.blockIdRecords);
+        profilerRun.resultTable.render();
+        
+        initialReport.refactorable_id = refactorable_id;
+    
+        console.log(initialReport);
+        projectReport["improvables"].push(initialReport);
+
+        //get some extra info from check box etc. notes
+        //send it to suite!
+        const doneButton = document.getElementById("done");
+        doneButton.addEventListener("click", function(){
+            window.parent.postMessage({
+                type: 'BENCH_MESSAGE_COMPLETE',
+                projectReport: projectReport
+            }, '*');
+        });
+       
+        
+    });
+
+
+
+    
+
 
     // Receipt of new list of targets, selected target update.
     const selectedTarget = document.getElementById('selectedTarget');
@@ -382,8 +300,10 @@ const runBenchmark = function () {
             selectedTarget.appendChild(targetOption);
         }
     });
-    selectedTarget.onchange = function () {
-        vm.setEditingTarget(this.value);
+    selectedTarget.onchange = async function () {
+        Blockly.Events.recordUndo = false;
+        await vm.setEditingTarget(this.value);
+        Blockly.Events.recordUndo = true;
     };
 
     const workspace = window.Blockly.inject('blocks', {
@@ -447,17 +367,17 @@ const runBenchmark = function () {
     const resultDiv = document.getElementById('profile-refactoring-result');
     resultDiv.innerHTML = "<table border='0'></table>"
 
-    const projectId = loadProject();
+    const projectId = loadProject(projectInput);
 
 
 
 
-    let manualMode = true;
+    
 
     vm.on('workspaceReady', data => {
         let evaluator = new RefactoringEvaluator(projectId, data, manualMode, resultDiv);
-            evaluator.runAll();
-        
+        evaluator.runAll();
+
     });
 
 
@@ -512,22 +432,23 @@ const runBenchmark = function () {
     // Feed keyboard events as VM I/O events.
     document.addEventListener('keydown', e => {
         // Don't capture keys intended for Blockly inputs.
-        if (e.target !== document && e.target !== document.body) {
-            return;
-        }
+        if (e.target !== document && e.target !== document.body) return;
+
         Scratch.vm.postIOData('keyboard', {
             keyCode: e.keyCode,
+            key: e.key,
             isDown: true
         });
-        e.preventDefault();
     });
     document.addEventListener('keyup', e => {
         // Always capture up events,
         // even those that have switched to other targets.
         Scratch.vm.postIOData('keyboard', {
             keyCode: e.keyCode,
+            key: e.key,
             isDown: false
         });
+
         // E.g., prevent scroll.
         if (e.target !== document && e.target !== document.body) {
             e.preventDefault();
@@ -547,14 +468,18 @@ class RefactoringEvaluator {
         this.analysisInfo = null;
     }
     async getAnalysisInfo() {
-        if(this.analysisInfo){
+        // let cache = {"improvables":[{"id":"WgMbA","type":"extract_var","target":"Back Deco","transforms":[],"invariants":[],"info":{},"smells":["Zq8t|iP;dqf6qq(#*+},","0;^UAm/U1efztZCHW(eX"]},{"id":"NEMdx","type":"extract_var","target":"Menu","transforms":[],"invariants":[],"info":{},"smells":["T[p5_`S-MgWeK~4Af|cs","n)^;vXv+*^cN!2XVWdK_"]},{"id":"UHtQG","type":"extract_var","target":"Menu","transforms":[],"invariants":[],"info":{},"smells":["d!?)UiNPrXJlT5r!|ar^","KLYf,_-rkvzePc[x+T`}"]},{"id":"o4MDF","type":"extract_var","target":"Menu","transforms":[],"invariants":[],"info":{},"smells":["g8(FqCWK-rU5AB^/Vq=}","TnK_p])nuw325YYlyJfO"]},{"id":"5i2AX","type":"extract_var","target":"Logo","transforms":[{"type":"VarDeclareAction","name":"renamable_varAd","id":"var_cRFF2S"},{"type":"BlockCreateAction","blockId":"block_gsUUhj","info":"data_setvariableto","block_xml":"<xml><block type='data_setvariableto' id='block_gsUUhj'><field name='VARIABLE' id='var_cRFF2S' variabletype=''>renamable_varAd</field><value name='VALUE'><shadow type='text'><field name='TEXT'>0</field></shadow><block type='operator_lt' id='EC'><value name='OPERAND1'><shadow type='text' id='xI'><field name='TEXT'></field></shadow><block type='data_variable' id='1s'><field name='VARIABLE' id='_-@%-rmp7sIjJh%1B6?P-scroll y' variabletype=''>scroll y</field></block></value><value name='OPERAND2'><shadow type='text' id='UJ'><field name='TEXT'></field></shadow><block type='operator_add' id='fw'><value name='NUM1'><shadow type='math_number' id='nu'><field name='NUM'>10</field></shadow><block type='data_variable' id='jm'><field name='VARIABLE' id='_-@%-rmp7sIjJh%1B6?P-height limit' variabletype=''>height limit</field></block></value><value name='NUM2'><shadow type='math_number' id='8u'><field name='NUM'>250</field></shadow></value></block></value></block></value></block></xml>"},{"type":"InsertBlockAction","inserted_block":"block_gsUUhj","target_block":",bS)n1]kNNvB29Ns#mZj"},{"type":"BlockCreateAction","blockId":"ndXDzO","info":"operator_equals","block_xml":"<xml><block type='operator_equals' id='ndXDzO'><value name='OPERAND1'><shadow type='text'><field name='TEXT'/></shadow><block type='data_variable' id='block_LV73sz'><field name='VARIABLE' id='var_cRFF2S' variabletype=''>renamable_varAd</field></block></value><value name='OPERAND2'><shadow type='text'><field name='TEXT'>true</field></shadow></value></block></xml>"},{"type":"ReplaceAction","target_block":"K_OoF/clHo179g{Xc(~N","replace_with":"ndXDzO"},{"type":"BlockCreateAction","blockId":"DFVDEO","info":"operator_equals","block_xml":"<xml><block type='operator_equals' id='DFVDEO'><value name='OPERAND1'><shadow type='text'><field name='TEXT'/></shadow><block type='data_variable' id='block_E6rXiN'><field name='VARIABLE' id='var_cRFF2S' variabletype=''>renamable_varAd</field></block></value><value name='OPERAND2'><shadow type='text'><field name='TEXT'>true</field></shadow></value></block></xml>"},{"type":"ReplaceAction","target_block":"o0BI=gN2^kV;.y]tOS7K","replace_with":"DFVDEO"}],"invariants":[{"type":"BlockCreateAction","blockId":"@_invariant_check_t7e7yC","info":"procedures_call","block_xml":"<xml><block type='procedures_call' id='@_invariant_check_t7e7yC'><mutation proccode='assertEquals %s %s' argumentids='[&quot;varId&quot;,&quot;exprRootId&quot;]' warp='null'/><value name='varId'><shadow type='text'><field name='TEXT'></field></shadow><block type='data_variable'><field name='VARIABLE' id='var_cRFF2S' variabletype=''>renamable_varAd</field></block></value><value name='exprRootId'><shadow type='text'><field name='TEXT'></field></shadow><block type='operator_lt' id='71'><value name='OPERAND1'><shadow type='text' id='NO'><field name='TEXT'></field></shadow><block type='data_variable' id='qc'><field name='VARIABLE' id='_-@%-rmp7sIjJh%1B6?P-scroll y' variabletype=''>scroll y</field></block></value><value name='OPERAND2'><shadow type='text' id='ge'><field name='TEXT'></field></shadow><block type='operator_add' id='59'><value name='NUM1'><shadow type='math_number' id='Ni'><field name='NUM'>10</field></shadow><block type='data_variable' id='hU'><field name='VARIABLE' id='_-@%-rmp7sIjJh%1B6?P-height limit' variabletype=''>height limit</field></block></value><value name='NUM2'><shadow type='math_number' id='vS'><field name='NUM'>250</field></shadow></value></block></value></block></value></block></xml>"},{"type":"InsertBlockAction","inserted_block":"@_invariant_check_t7e7yC","target_block":"1wt+)AC|]dIr`KCb%bl{"},{"type":"BlockCreateAction","blockId":"@_invariant_check_RLN1RE","info":"procedures_call","block_xml":"<xml><block type='procedures_call' id='@_invariant_check_RLN1RE'><mutation proccode='assertEquals %s %s' argumentids='[&quot;varId&quot;,&quot;exprRootId&quot;]' warp='null'/><value name='varId'><shadow type='text'><field name='TEXT'></field></shadow><block type='data_variable'><field name='VARIABLE' id='var_cRFF2S' variabletype=''>renamable_varAd</field></block></value><value name='exprRootId'><shadow type='text'><field name='TEXT'></field></shadow><block type='operator_lt' id='uV'><value name='OPERAND1'><shadow type='text' id='HY'><field name='TEXT'></field></shadow><block type='data_variable' id='91'><field name='VARIABLE' id='_-@%-rmp7sIjJh%1B6?P-scroll y' variabletype=''>scroll y</field></block></value><value name='OPERAND2'><shadow type='text' id='8y'><field name='TEXT'></field></shadow><block type='operator_add' id='Vg'><value name='NUM1'><shadow type='math_number' id='W0'><field name='NUM'>10</field></shadow><block type='data_variable' id='Mk'><field name='VARIABLE' id='_-@%-rmp7sIjJh%1B6?P-height limit' variabletype=''>height limit</field></block></value><value name='NUM2'><shadow type='math_number' id='U6'><field name='NUM'>250</field></shadow></value></block></value></block></value></block></xml>"},{"type":"InsertBlockAction","inserted_block":"@_invariant_check_RLN1RE","target_block":",bS)n1]kNNvB29Ns#mZj"}],"info":{"num_blocks":539,"analysis_time":216,"expr_clone_group_size":2,"expr_clone_size":5,"num_blocks_changed":0},"smells":[]},{"id":"tXXkg","type":"extract_var","target":"Exit Level","transforms":[],"invariants":[],"info":{},"smells":["mbR1s~X?N_^%^q%~I(Rj","iCFmWFDN9?bu*}mt!_#~"]},{"id":"mGGEf","type":"extract_var","target":"Birdy","transforms":[],"invariants":[],"info":{},"smells":["/R_oFhbtz=#Ez2GSq?[)","l/m-Q])[X2UQG=GG=5A7"]}],"checkSetup":{"actions":[{"type":"VarDeclareAction","name":"__inv_failure_count","id":"__inv_failure_count"},{"type":"BlockCreateAction","blockId":null,"info":null,"block_xml":"<xml><block type='procedures_definition' id='assertEqualID'><value name='custom_block'><shadow type='procedures_prototype' id='nEy2N'><mutation proccode='assertEquals %s %s' argumentids='[&quot;varId&quot;,&quot;exprRootId&quot;]' argumentnames='[&quot;var&quot;,&quot;expr&quot;]' argumentdefaults='[&quot;&quot;,&quot;&quot;]' warp='false'/><value name='varId'><shadow type='argument_reporter_string_number' id='bF7Vzl'><field name='VALUE'>var</field></shadow></value><value name='exprRootId'><shadow type='argument_reporter_string_number' id='RgGmIN'><field name='VALUE'>expr</field></shadow></value></shadow></value><next><block type='control_if' id='VJPMFk'><value name='CONDITION'><block type='operator_not' id='yu2qrJ'><value name='OPERAND'><shadow type='text'><field name='TEXT'></field></shadow><block type='operator_equals' id='CvTCOE'><value name='OPERAND1'><shadow type='text'><field name='TEXT'></field></shadow><block type='argument_reporter_string_number' id='--inv-PDpxI4'><field name='VALUE'>var</field></block></value><value name='OPERAND2'><shadow type='text'><field name='TEXT'></field></shadow><block type='argument_reporter_string_number' id='--inv-ukYrV8'><field name='VALUE'>expr</field></block></value></block></value></block></value><statement name='SUBSTACK'><block type='data_changevariableby'><field name='VARIABLE' variabletype=''>__inv_failure_count</field><value name='VALUE'><shadow type='text'><field name='TEXT'>1</field></shadow></value></block></statement></block></next></block></xml>"}]},"project_metrics":{"num_failed_preconds":6,"num_procedures":3,"locs":382,"num_scripts":57,"num_smells":7,"num_scriptables":10,"num_vars":29,"num_blocks":539,"num_refactorables":7}};
+
+        // return cache;
+
+        if (this.analysisInfo) {
             return this.analysisInfo;
         }
         const url = "http://localhost:8080/discover";
         const xml = await new Promise(function (resolve, reject) {
             resolve(getProgramXml());
         });
-        
+
         const response = await fetch(url, {
             method: "POST",
             mode: "cors",
@@ -562,19 +487,27 @@ class RefactoringEvaluator {
             headers: {
                 "Content-Type": "text/xml",
                 "id": this.projectId,
-                "type": "duplicate-code"
+                "type": "duplicate-expression",
+                'evalMode': false
             },
             body: xml,
         });
 
         this.analysisInfo = response.json();
-        
+
         return this.analysisInfo;
     }
 
-    renderRefactorables(refactorables, data) {
-        var refactorableData = data['improvables'];
-        let refactorableKV = {};
+    renderRefactorables(refactorables, json) {
+        if (json.error != null) {
+            console.log(JSON.stringify(json.error));
+            return;
+        }else{
+            Scratch.json = json; 
+        }
+        
+        var refactorableData = json['improvables'];
+        let refactorableKV = Scratch.refactorableKV = {};
 
         for (let i = 0; i < refactorableData.length; i++) {
             refactorableKV[refactorableData[i].id] = refactorableData[i];
@@ -582,21 +515,86 @@ class RefactoringEvaluator {
             refactorable.setAttribute('value', refactorableData[i].id);
 
             refactorable.appendChild(
-                document.createTextNode(refactorableData[i].target+":"+refactorableData[i].id)
+                document.createTextNode(refactorableData[i].target + ":" + refactorableData[i].id)
             );
 
             refactorables.appendChild(refactorable);
         }
 
-        refactorables.onchange = ()=> {
-            console.log(refactorables.value);
-            console.log(refactorableKV[refactorables.value]);
+        refactorables.onchange = () => {
+            if (!this.manualMode) {
+                return;
+            }
+
+            // populate changes walk through
+            let changesWalkThrough = document.getElementById('changesWalkThrough');
+            while (changesWalkThrough.firstChild) { //clear
+                changesWalkThrough.removeChild(changesWalkThrough.firstChild);
+            }
+            let improvable = refactorableKV[refactorables.value]
+            if(improvable.transforms.length!=0){
+                let createdBlockActions = improvable.transforms.filter((itm)=>itm.type==='BlockCreateAction')
+                for(var action of createdBlockActions){
+                    const changeItem = document.createElement('option');
+                    changeItem.setAttribute('value', action.blockId);
+                    changeItem.appendChild(
+                        document.createTextNode(action.info + ": "+ action.blockId)
+                    );
+                    changesWalkThrough.appendChild(changeItem);
+                }
+            }else{
+                // in debug/eval mode walkthru smells
+                for(var blockId of improvable.smells){
+                    const changeItem = document.createElement('option');
+                    changeItem.setAttribute('value', blockId);
+                    changeItem.appendChild(
+                        document.createTextNode(blockId)
+                    );
+                    changesWalkThrough.appendChild(changeItem);
+                }
+            }
             
+
+            changesWalkThrough.onchange = function() {
+                let id = this.value;
+                Blockly.getMainWorkspace().centerOnBlock(id);
+                setTimeout(()=>{
+                    Blockly.getMainWorkspace().reportValue(id,id);
+                },500)
+            }
+
+            //populate field to report safety evaluation data
+            const failButton = document.getElementById("markAsFailButton");
+            const comment = document.getElementById("comment");
+            
+            failButton.addEventListener("click", function(){
+                const idInput = document.getElementById("projectIdInput");
+                
+                let refactorable_id = document.getElementById('improvables').value;
+                let initialReport = {refactorable_id:refactorable_id};
+                // let improvable = projectReport.improvables.find((itm)=>itm.refactorable_id===refactorable_id)||{};
+                initialReport.predicted = improvable.transforms.length? "pass":"fail";
+                initialReport.actual = "fail";//override
+                
+                initialReport.comment = comment.value;
+                
+                Scratch.projectReport["improvables"].push(initialReport);
+                return;
+            });
+
+            // initialReport.predicted = Scratch.refactorableKV[refactorable_id].transforms.length? "pass":"fail";
+            // initialReport.actual = initialReport.predicted;  //by default need override manually
+
+
+            console.log(refactorables.value);
+            // console.log(refactorableKV[refactorables.value]);
+
             (async () => {
                 //undo from previous refactoring transformation if applicable
                 while (Scratch.workspace.hasUndoStack()) {
                     await Scratch.workspace.undo();
                     await Blockly.Events.fireNow_();
+                    // await Scratch.vm.emitWorkspaceUpdate();
                 }
 
 
@@ -606,14 +604,21 @@ class RefactoringEvaluator {
                 if (Scratch.vm.editingTarget.getName() != refactoringTarget) {
                     console.log("switch target to:" + refactoringTarget);
                     let targetId = Scratch.vm.runtime.targets.filter(t => t.getName() === refactoringTarget)[0].id;
+                    Blockly.Events.recordUndo = false;
                     Scratch.vm.setEditingTarget(targetId);
                 }
-                
+
                 let report = {};
                 Blockly.Events.recordUndo = true;
-                try{
+                if(refactorable.transforms.length==0){
+                    return;
+                }
+                try {
                     await this.refactor(refactorable.transforms, report);
-                }catch(err){
+                    //setup invariant checks after done refactoring when running either before or manual
+                    await this.setupInvariantChecks(json['checkSetup'], refactorable.invariants);
+
+                } catch (err) {
                     console.error(err.message);
                     console.log("Try to restore workspace...");
                     while (Scratch.workspace.hasUndoStack()) {
@@ -622,23 +627,22 @@ class RefactoringEvaluator {
                     }
                     throw new Error("Error applying transformation");
                 }
+                
                 // await this.runProfile(initialReport);
 
                 //clean up (undo changes)
 
-             
 
-                console.log(report);
-              
+
             })();
-            
+
         };
 
         return refactorables;
     }
 
 
-    switchTarget(i, selectRefactorableDom, refactoringTarget) {
+    async switchTarget(i, selectRefactorableDom, refactoringTarget) {
         //programmatically select refactorable to execute
         selectRefactorableDom.selectedIndex = i;
         selectRefactorableDom.dispatchEvent(new Event('change'));
@@ -647,35 +651,43 @@ class RefactoringEvaluator {
         if (Scratch.vm.editingTarget.getName() != refactoringTarget) {
             console.log("switch target to:" + refactoringTarget);
             let targetId = Scratch.vm.runtime.targets.filter(t => t.getName() === refactoringTarget)[0].id;
-            Scratch.vm.setEditingTarget(targetId);
+            Blockly.Events.recordUndo = false;
+            await Scratch.vm.setEditingTarget(targetId);
+            Blockly.Events.recordUndo = true;
         }
     }
 
-    async refactor(transforms,initialReport){
+    async refactor(transforms, initialReport) {
         console.log(transforms);
         //START timer
         const t0 = performance.now();
 
-        try {
-            for (var action of transforms) {
+
+        for (var action of transforms) {
+            try {
                 await Scratch.workspace.blockTransformer.executeAction(action);
                 //synchronous for now to make sure vm update its internal representation correclty in sequence of the applied transformation
                 await Blockly.Events.fireNow_();
+            } catch (err) {
+                console.log("Failed transformation:" + JSON.stringify(action));
+                throw err;
             }
-        } catch (err) {
-            throw err;
         }
+
 
         //STOP timer
         const t1 = performance.now();
-        
+
         initialReport.resp_time = t1 - t0;
+        initialReport.num_transforms = transforms.length;
 
     }
 
-    async runProfile(initialReport){
-        let targetInvariantChecks = new Set(["T?,F,g{dyE*rx3/EdX^H", "_assertion_failed", "invariant02"]);
-        let profilerRun = new ProfilerRun({ vm: Scratch.vm, warmUpTime, maxRecordedTime, projectId: this.projectId, initialReport, resultDiv: this.resultDiv, targetInvariantChecks });
+    async runProfile(initialReport) {
+        let targetInvariantChecks = new Set(["block_8N7tdO","block_CDzozT"]);
+        let refactorable_id = document.getElementById('improvables').value;
+
+        let profilerRun = Scratch.ProfileRun = new ProfilerRun({ vm: Scratch.vm, warmUpTime, maxRecordedTime, projectId: this.projectId, initialReport, resultDiv: this.resultDiv, targetInvariantChecks });
         await profilerRun.run();
 
         // repeat profile run for coverage
@@ -688,8 +700,18 @@ class RefactoringEvaluator {
         // }
 
         //prepare final report for this refactoring
+        
         profilerRun.stats.update(profilerRun.profiler.blockIdRecords);
         profilerRun.resultTable.render();
+        Scratch.ProfileRun = null;
+    }
+
+    setupInvariantChecks(setupObj,invChecks){
+        let actions = setupObj['actions'];
+        (async () => {
+                await this.refactor(actions, {});
+                await this.refactor(invChecks, {});
+        })();
     }
 
     runAll() {
@@ -697,53 +719,55 @@ class RefactoringEvaluator {
             type: 'BENCH_MESSAGE_LOADING'
         }, '*');
 
-        const projectReport = { "project_id": this.projectId, "improvables": [] };
+        const projectReport = Scratch.projectReport = { "project_id": this.projectId, "improvables": [] };
 
         this.getAnalysisInfo().then(json => {
             const refactorables = document.getElementById('improvables');
-            let selectRefactorableDom = this.renderRefactorables(refactorables, json,projectReport)
+            let selectRefactorableDom = this.renderRefactorables(refactorables, json, projectReport);
             return { json, selectRefactorableDom };
         })
-        .then(({ json, selectRefactorableDom }) => {
-            Blockly.Events.recordUndo = true;
-            if (this.manualMode) {
-                return;
-            }
-            (async () => {
-                for (let i = 0; i < selectRefactorableDom.length; i++) {
-                    while (Scratch.workspace.hasUndoStack()) {
-                        await Scratch.workspace.undo();
-                        await Blockly.Events.fireNow_();
-                    }
-
-                    let refactoringTarget = json['improvables'][i]["target"];
-                    this.switchTarget(i, selectRefactorableDom, refactoringTarget);
-
-                    projectReport['project_metrics'] = json['project_metrics'];
-                    let initialReport = json['improvables'][i].info;
-
-                    let refactorable_id = initialReport.refactorable_id = selectRefactorableDom.value;
-                    await this.refactor(json['improvables'][i].transforms, initialReport);
-                    await this.runProfile(initialReport);
-
-                    projectReport["improvables"].push(initialReport);
-
-                    //clean up (undo changes)
-
-                    
-
+            .then(({ json, selectRefactorableDom }) => {
+                Blockly.Events.recordUndo = true;
+              
+                if (this.manualMode) {
+                    return;
                 }
-                // finalize and send project report to benchmark suite
-                console.log(projectReport);
-                window.parent.postMessage({
-                    type: 'BENCH_MESSAGE_COMPLETE',
-                    projectReport: projectReport
-                }, '*');
-            })();
+                (async () => {
+                    projectReport['project_metrics'] = json['project_metrics'];
+                    for (let i = 0; i < selectRefactorableDom.length; i++) {
+                        while (Scratch.workspace.hasUndoStack()) {
+                            await Scratch.workspace.undo();
+                            await Blockly.Events.fireNow_();
+                        }
 
-        }).then(() => {
+                        let refactoringTarget = json['improvables'][i]["target"];
+                        this.switchTarget(i, selectRefactorableDom, refactoringTarget);
 
-        });
+                        let initialReport = json['improvables'][i].info;
+
+                        let refactorable_id = initialReport.refactorable_id = selectRefactorableDom.value;
+                        await this.refactor(json['improvables'][i].transforms, initialReport);
+                        //setup invariant checks after done refactoring when running either before or manual
+                        await this.setupInvariantChecks(json['checkSetup']);
+                        
+                        await this.runProfile(initialReport);
+
+                        projectReport["improvables"].push(initialReport);
+
+                        //clean up (undo changes)
+                        // break;  // todo: remove
+                    }
+                    // finalize and send project report to benchmark suite
+                    console.log(projectReport);
+                    window.parent.postMessage({
+                        type: 'BENCH_MESSAGE_COMPLETE',
+                        projectReport: projectReport
+                    }, '*');
+                })();
+
+            }).then(() => {
+
+            });
     }
 
 }
@@ -773,3 +797,4 @@ window.onload = function () {
 window.onhashchange = function () {
     location.reload();
 };
+

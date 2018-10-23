@@ -12,9 +12,27 @@
     Evaluation Tool for Blocks Refactoring
   </p>
   <div class="run-form">
-      <input type="text" value="">
-      <button class="run">run</button>
-      <button id="getXml">get XML</button>
+      <input type="text" id="projectIdInput" value="">
+      <button class="run">reload</button>
+  </div>
+  <div>
+    <button id="getTargetXml">get Tareget's XML</button>
+    <button id="getBlockXml">get selected block's XML</button>
+  </div>
+  <div class='focus-ws'>
+    <input type="text" id='blockIdToFocusTextInput' value="">
+    <button id='centerOnBlockButton'>Focus Workspace</button>
+  </div>
+  <div>
+    <button id='cleanup'>clean up</button>
+    <button id='greenFlag'>greenFlag</button>
+    <button id='stop'>stop</button>
+    <button id='profile'>profile</button>
+    <button id='done'>done</button>
+  </div>
+  <div class='safety-eval'>
+    <input type="text" id='comment' value="">
+    <button id='markAsFailButton'>Mark refactoring as failure</button>
   </div>
 
   
@@ -54,7 +72,8 @@
 
   <select id="selectedTarget" multiple></select>
   <select id="improvables" multiple></select>
-  <div id="blocks"></div>
+  <select id="changesWalkThrough" multiple></select>
+  <div id="blocks" style="height: 800px; width: 800px;"></div>
   </div>
 
   
@@ -70,6 +89,8 @@
   <!-- VM -->
   <script src="./scratch-vm.js"></script>
   <!-- Playground -->
+  <script src="./utils.js"></script>
+  <script src="./stats-display.js"></script>
   <script src="./benchmark.js"></script>
 </body>
 </html>

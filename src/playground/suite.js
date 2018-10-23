@@ -377,6 +377,9 @@ class BenchSuiteResultView {
                 <div><a href="#" onclick="window.download(this)">
                     Save Reports
                 </a></div>
+                <div><a href="#" onclick="window.aggregate(this)">
+                    Aggregate
+                </a></div>
             </div>
             <div class="result-status">
                 <a href="#"><label for="compare-file">Compare Reports<input
@@ -448,6 +451,12 @@ window.download = function (_this) {
     _this.href = URL.createObjectURL(blob);
 };
 
+window.aggregate = function (_this) {
+    
+
+
+}
+
 
 /**
 First rename directory to replace whitespace with underscore
@@ -470,22 +479,76 @@ window.onload = function () {
     //     warmUpTime: 0,
     //     recordingTime: 2000
     // }));
-    let pass = [];
-    let bugs = [];
-    let small_projects = [
-        "Scratch_Project_5",
-        "SS_Scratch_Project_10",
-        "Scratch_Project_12",
-        "SS_Scratch_Project_14",
-        "SS_Scratch_Project_15",
-        "SS_Scratch_Project_16",
-        "SS_Scratch_Project_17",
-        "SS_Scratch_Project_18",
-       "SS_Scratch_Project_8",
-        "SS_Scratch_Project_9"
+    let OKprojects = [
+        
     ];
+
+    let test_projects = [
+    //     "SS_Scratch_Project_10",
+    //     "SS_Scratch_Project_18",
+    //    "SS_Scratch_Project_8",
+    //     "Scratch_Project_5",
+    //     "Scratch_Project_12",
+    //     "SS_Scratch_Project_14",
+    //     "SS_Scratch_Project_15",
+    //     "SS_Scratch_Project_16",
+    //     "SS_Scratch_Project_17",
+    //     "SS_Scratch_Project_9"
+    ];
+
+    let expr_clone_dataset = [
+        // "expr-clone-237198187",
+        // "expr-clone-246336982",
+        // "expr-clone-247985310",
+        // "expr-clone-249549259",
+
+        // "expr-clone-252206906",
+        // "expr-clone-235504161",
+        // "expr-clone-247339697",
+        // "expr-clone-251386278",
+        // "expr-clone-200533899",
+        // "expr-clone-202510579"
+    ]
+
+    let dataset = [
+        // "small-average-art-252493776",
+        // "small-average-games-239818687",
+        // "small-popular-art-244029457",
+        // "small-popular-games-245491698",
+        // "small-popular-music-251373501",
+        // "small-popular-tutorials-213968953",
+        // "big-average-games-249579578",
+        // "big-average-music-251941152",
+        // "big-average-stories-251337677",
+        // "big-popular-games-248728816",
+        // "big-popular-music-250782876",
+        // "big-popular-tutorials-243216409"
+        // "extract-var-02",
+        // "small-average-animation-251581694",
+        // "small-average-art-252493776",
+        // "small-average-games-239818687",
+        // "small-average-stories-252223602",
+        // "small-average-tutorials-251117970",
+        // "small-popular-animation-250856489",
+        // "small-popular-art-244029457",
+        // "small-popular-games-245491698",
+        // "small-popular-music-251373501",
+        // "small-popular-tutorials-213968953",
+        // "big-average-animation-252436559",
+        // "big-average-games-249579578",
+        // "big-average-music-251941152",
+        // "big-average-stories-251337677",
+        // "big-popular-games-248728816",
+        // "big-popular-music-250782876",
+        // "big-popular-tutorials-243216409",
+        // "big-average-animation-252436559","big-average-art-250806122","big-average-games-249579578","big-average-music-251941152","big-average-stories-251337677","big-popular-animation-245195282","big-popular-art-207536546","big-popular-games-248728816","big-popular-music-250782876","big-popular-stories-229877708","big-popular-tutorials-243216409","expr-clone-200533899","expr-clone-202510579","expr-clone-235504161","expr-clone-237198187","expr-clone-246336982","expr-clone-247339697","expr-clone-247985310","expr-clone-249549259","expr-clone-251386278","expr-clone-252206906","ScratchProject1","Scratch_Project_12","ScratchProject19","ScratchProject2",
+        // "ScratchProject3","ScratchProject4","Scratch_Project_5","ScratchProject6","ScratchProject7","small-average-animation-251581694","small-average-art-252493776","small-average-games-239818687","small-average-music-252561413","small-average-stories-252223602","small-average-tutorials-251117970",
+        // "small-popular-art-244029457","small-popular-games-245491698","small-popular-music-251373501","small-popular-stories-223874016","small-popular-tutorials-213968953","SS_Scratch_Project_10","SSScratchProject11","SSScratchProject13","SS_Scratch_Project_14","SS_Scratch_Project_15","SS_Scratch_Project_16","SS_Scratch_Project_17","SS_Scratch_Project_18","SS_Scratch_Project_8","SS_Scratch_Project_9"
+    ]
+
+    let extrvar_inspect_data = ['big-popular-art-207536546', 'expr-clone-235504161', 'ScratchProject6', 'ScratchProject7', 'big-popular-tutorials-243216409', 'expr-clone-237198187', 'expr-clone-247339697', 'expr-clone-246336982', 'expr-clone-251386278', 'ScratchProject4', 'expr-clone-252206906', 'ScratchProject1'];
     
-    for (const proj of small_projects) {
+    for (const proj of extrvar_inspect_data) {
         suite.add(new BenchFixture({
             projectId: proj,
             warmUpTime: 1000,
