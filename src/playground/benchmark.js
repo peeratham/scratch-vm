@@ -1,20 +1,14 @@
-const Scratch = window.Scratch = window.Scratch || {};
-
-
 const projectInput = document.querySelector('input');
 
 const manualMode = true;
+let warmUpTime = 2000;
+let maxRecordedTime = 3000;
+const WORK_TIME = 0.75;
 
-document.querySelector('.run')
-    .addEventListener('click', () => {
+document.querySelector('.run').addEventListener('click', () => {
         window.location.hash = projectInput.value;
         location.reload();
     }, false);
-
-
-const WORK_TIME = 0.75;
-
-
 
 class Refactorings {
     constructor(profiler, report) {
@@ -152,312 +146,8 @@ class ProfilerRun {
         // });
     }
 }
-let warmUpTime = 2000;
-let maxRecordedTime = 3000;
-/**
- * Run the benchmark with given parameters in the location's hash field or
- * using defaults.
- */
-const runBenchmark = function () {
-    // Lots of global variables to make debugging easier
-    // Instantiate the VM.
-    const vm = new window.VirtualMachine();
-    Scratch.vm = vm;
-
-    let firstTimeWorkspaceUpdate = true;
-
-    // Receipt of new block XML for the selected target.
-    // workspaceUpdate after targetUpdate
-    vm.on('workspaceUpdate', data => {
-        //define extension blocks
-        //todo: future don't define if already exists
-        if (Scratch.vm.runtime._blockInfo.length > 0) {
-            Blockly.defineBlocksWithJsonArray(Scratch.vm.runtime._blockInfo[0].blocks.map(blockInfo => blockInfo.json).filter(x => x));
-        }
-        workspace.clear();
-        Blockly.Events.recordUndo = false;
-        const dom = window.Blockly.Xml.textToDom(data.xml);
-        window.Blockly.Xml.domToWorkspace(dom, workspace);
-        if (firstTimeWorkspaceUpdate) {
-            firstTimeWorkspaceUpdate = false;
-            vm.emit('workspaceReady', data);
-        }
-    });
-
-    const xmlButton = document.getElementById('getTargetXml');
-    xmlButton.addEventListener("click", function () {
-        let xml = Scratch.vm.editingTarget.blocks.toXML();
-        let str = xml.replace(/\s+/g, ' '); // Keep only one space character
-        str = str.replace(/>\s*/g, '>');  // Remove space after >
-        str = str.replace(/\s*</g, '<');  // Remove space before <
-        str = str.replace(/"/g, "'");   //replace double quotes with single quotes
-        console.log(str);
-    });
-
-    const blockXmlButton = document.getElementById('getBlockXml');
-    blockXmlButton.addEventListener("click", function () {
-        if(Blockly.selected){
-            let block = Blockly.selected;
-            let dom = Blockly.Xml.blockToDom(block);
-            let xml = Blockly.Xml.domToText(dom);
-            let str = xml.replace(/\s+/g, ' '); // Keep only one space character
-            str = str.replace(/>\s*/g, '>');  // Remove space after >
-            str = str.replace(/\s*</g, '<');  // Remove space before <
-            str = str.replace(/"/g, "'"); //replace double quotes with single quotes
-            console.log(str);
-        }
-    });
-
-    const blockIdToFocusTextInput = document.getElementById('blockIdToFocusTextInput');
-    const centerOnBlockButton = document.getElementById('centerOnBlockButton');
-    centerOnBlockButton.addEventListener("click", function(){
-        let id = blockIdToFocusTextInput.value;
-        Blockly.getMainWorkspace().centerOnBlock(id);
-        setTimeout(function(){
-            Blockly.getMainWorkspace().reportValue(id,id);
-        },500)
-    });
-
-    const cleanUpButton = document.getElementById("cleanup");
-    cleanUpButton.addEventListener("click", function(){
-        Scratch.workspace.cleanUp();
-    });
-
-    const greenFlagButton = document.getElementById("greenFlag");
-    greenFlagButton.addEventListener("click", function(){
-        Scratch.vm.runtime.start();
-        Scratch.vm.runtime.greenFlag();
-    });
-
-    const stopButton = document.getElementById("stop");
-    stopButton.addEventListener("click", function(){
-        Scratch.vm.stopAll();
-    });
-
-    const profileButton = document.getElementById("profile");
-    profileButton.addEventListener("click", async function(){
-        const projectReport = Scratch.projectReport =  { "project_id": projectId, "improvables": [] };
-        return;
-        let targetInvariantChecks = new Set(["block_TKnelX","block_kEPt4r"]);
-
-        document.getElementById('improvables').value
-        let refactorable_id = document.getElementById('improvables').value;
-        projectReport['project_metrics'] = Scratch.json['project_metrics'];
-
-        let initialReport = {};
-        if(Scratch.refactorableKV[refactorable_id]){
-            initialReport = Scratch.refactorableKV[refactorable_id].info;
-        }
-        let profilerRun = Scratch.ProfileRun = new ProfilerRun({ vm: Scratch.vm, warmUpTime, maxRecordedTime:5000, projectId: projectId, initialReport:initialReport, resultDiv: resultDiv, targetInvariantChecks });
-        await profilerRun.run();
-        console.log("coverage:" + profilerRun.coverage());
-        
-        //prepare final report for this refactoring
-        profilerRun.stats.update(profilerRun.profiler.blockIdRecords);
-        profilerRun.resultTable.render();
-        
-        initialReport.refactorable_id = refactorable_id;
-    
-        console.log(initialReport);
-        projectReport["improvables"].push(initialReport);
-
-        //get some extra info from check box etc. notes
-        //send it to suite!
-        const doneButton = document.getElementById("done");
-        doneButton.addEventListener("click", function(){
-            window.parent.postMessage({
-                type: 'BENCH_MESSAGE_COMPLETE',
-                projectReport: projectReport
-            }, '*');
-        });
-       
-        
-    });
 
 
-
-    
-
-
-    // Receipt of new list of targets, selected target update.
-    const selectedTarget = document.getElementById('selectedTarget');
-    vm.on('targetsUpdate', data => {
-        // Clear select box.
-        while (selectedTarget.firstChild) {
-            selectedTarget.removeChild(selectedTarget.firstChild);
-        }
-        // Generate new select box.
-        for (let i = 0; i < data.targetList.length; i++) {
-            const targetOption = document.createElement('option');
-            targetOption.setAttribute('value', data.targetList[i].id);
-            // If target id matches editingTarget id, select it.
-            if (data.targetList[i].id === data.editingTarget) {
-                targetOption.setAttribute('selected', 'selected');
-            }
-            targetOption.appendChild(
-                document.createTextNode(data.targetList[i].name)
-            );
-            selectedTarget.appendChild(targetOption);
-        }
-    });
-    selectedTarget.onchange = async function () {
-        Blockly.Events.recordUndo = false;
-        await vm.setEditingTarget(this.value);
-        Blockly.Events.recordUndo = true;
-    };
-
-    const workspace = window.Blockly.inject('blocks', {
-        comments: true,
-        disable: false,
-        collapse: false,
-        media: '../playground/media/',
-        readOnly: false,
-        scrollbars: true,
-        sounds: true,
-        zoom: {
-            controls: true,
-            wheel: true,
-            startScale: 0.6,
-            maxScale: 4,
-            minScale: 0.25,
-            scaleSpeed: 1.1
-        },
-        colours: {
-            fieldShadow: 'rgba(255, 255, 255, 0.3)',
-            dragShadowOpacity: 0.6
-        }
-    });
-    Scratch.workspace = workspace;
-
-    //connect workspace to vm
-    Scratch.workspace.addChangeListener(Scratch.vm.blockListener);
-    Scratch.workspace.addChangeListener(Scratch.vm.variableListener);
-    const flyoutWorkspace = Scratch.workspace.getFlyout().getWorkspace();
-    flyoutWorkspace.addChangeListener(Scratch.vm.flyoutBlockListener);
-    flyoutWorkspace.addChangeListener(Scratch.vm.monitorBlockListener);
-
-    vm.setTurboMode(false);  //turbo
-
-    const storage = new ScratchStorage(); /* global ScratchStorage */
-    const AssetType = storage.AssetType;
-
-    storage.addWebSource([AssetType.Project], getLocalProjectUrl);
-    storage.addWebSource([AssetType.ImageVector, AssetType.ImageBitmap, AssetType.Sound], getLocalAssetUrl);
-    vm.attachStorage(storage);
-
-    new LoadingProgress(progress => {
-        document.getElementsByClassName('loading-total')[0]
-            .innerText = progress.total;
-        document.getElementsByClassName('loading-complete')[0]
-            .innerText = progress.complete;
-    }).on(storage);
-
-
-
-    if (location.hash) {
-        const split = location.hash.substring(1).split(',');
-        if (split[1] && split[1].length > 0) {
-            warmUpTime = Number(split[1]);
-        }
-        maxRecordedTime = Number(split[2] || '0') || 6000;
-    }
-
-    maxRecordedTime = 1000;
-
-    const resultDiv = document.getElementById('profile-refactoring-result');
-    resultDiv.innerHTML = "<table border='0'></table>"
-
-    const projectId = loadProject(projectInput);
-
-
-
-
-    
-
-    vm.on('workspaceReady', data => {
-        let evaluator = new RefactoringEvaluator(projectId, data, manualMode, resultDiv);
-        evaluator.runAll();
-
-    });
-
-
-
-    // Instantiate the renderer and connect it to the VM.
-    const canvas = document.getElementById('scratch-stage');
-    const renderer = new window.ScratchRender(canvas);
-    Scratch.renderer = renderer;
-    vm.attachRenderer(renderer);
-    const audioEngine = new window.AudioEngine();
-    vm.attachAudioEngine(audioEngine);
-    /* global ScratchSVGRenderer */
-    vm.attachV2SVGAdapter(new ScratchSVGRenderer.SVGRenderer());
-    vm.attachV2BitmapAdapter(new ScratchSVGRenderer.BitmapAdapter());
-
-    // Feed mouse events as VM I/O events.
-    document.addEventListener('mousemove', e => {
-        const rect = canvas.getBoundingClientRect();
-        const coordinates = {
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top,
-            canvasWidth: rect.width,
-            canvasHeight: rect.height
-        };
-        Scratch.vm.postIOData('mouse', coordinates);
-    });
-    canvas.addEventListener('mousedown', e => {
-        const rect = canvas.getBoundingClientRect();
-        const data = {
-            isDown: true,
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top,
-            canvasWidth: rect.width,
-            canvasHeight: rect.height
-        };
-        Scratch.vm.postIOData('mouse', data);
-        e.preventDefault();
-    });
-    canvas.addEventListener('mouseup', e => {
-        const rect = canvas.getBoundingClientRect();
-        const data = {
-            isDown: false,
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top,
-            canvasWidth: rect.width,
-            canvasHeight: rect.height
-        };
-        Scratch.vm.postIOData('mouse', data);
-        e.preventDefault();
-    });
-
-    // Feed keyboard events as VM I/O events.
-    document.addEventListener('keydown', e => {
-        // Don't capture keys intended for Blockly inputs.
-        if (e.target !== document && e.target !== document.body) return;
-
-        Scratch.vm.postIOData('keyboard', {
-            keyCode: e.keyCode,
-            key: e.key,
-            isDown: true
-        });
-    });
-    document.addEventListener('keyup', e => {
-        // Always capture up events,
-        // even those that have switched to other targets.
-        Scratch.vm.postIOData('keyboard', {
-            keyCode: e.keyCode,
-            key: e.key,
-            isDown: false
-        });
-
-        // E.g., prevent scroll.
-        if (e.target !== document && e.target !== document.body) {
-            e.preventDefault();
-        }
-    });
-
-    // Run threads
-    vm.start();
-};
 
 class RefactoringEvaluator {
     constructor(projectId, data, manualMode, resultDiv) {
@@ -468,9 +158,9 @@ class RefactoringEvaluator {
         this.analysisInfo = null;
     }
     async getAnalysisInfo() {
-        // let cache = {"improvables":[{"id":"WgMbA","type":"extract_var","target":"Back Deco","transforms":[],"invariants":[],"info":{},"smells":["Zq8t|iP;dqf6qq(#*+},","0;^UAm/U1efztZCHW(eX"]},{"id":"NEMdx","type":"extract_var","target":"Menu","transforms":[],"invariants":[],"info":{},"smells":["T[p5_`S-MgWeK~4Af|cs","n)^;vXv+*^cN!2XVWdK_"]},{"id":"UHtQG","type":"extract_var","target":"Menu","transforms":[],"invariants":[],"info":{},"smells":["d!?)UiNPrXJlT5r!|ar^","KLYf,_-rkvzePc[x+T`}"]},{"id":"o4MDF","type":"extract_var","target":"Menu","transforms":[],"invariants":[],"info":{},"smells":["g8(FqCWK-rU5AB^/Vq=}","TnK_p])nuw325YYlyJfO"]},{"id":"5i2AX","type":"extract_var","target":"Logo","transforms":[{"type":"VarDeclareAction","name":"renamable_varAd","id":"var_cRFF2S"},{"type":"BlockCreateAction","blockId":"block_gsUUhj","info":"data_setvariableto","block_xml":"<xml><block type='data_setvariableto' id='block_gsUUhj'><field name='VARIABLE' id='var_cRFF2S' variabletype=''>renamable_varAd</field><value name='VALUE'><shadow type='text'><field name='TEXT'>0</field></shadow><block type='operator_lt' id='EC'><value name='OPERAND1'><shadow type='text' id='xI'><field name='TEXT'></field></shadow><block type='data_variable' id='1s'><field name='VARIABLE' id='_-@%-rmp7sIjJh%1B6?P-scroll y' variabletype=''>scroll y</field></block></value><value name='OPERAND2'><shadow type='text' id='UJ'><field name='TEXT'></field></shadow><block type='operator_add' id='fw'><value name='NUM1'><shadow type='math_number' id='nu'><field name='NUM'>10</field></shadow><block type='data_variable' id='jm'><field name='VARIABLE' id='_-@%-rmp7sIjJh%1B6?P-height limit' variabletype=''>height limit</field></block></value><value name='NUM2'><shadow type='math_number' id='8u'><field name='NUM'>250</field></shadow></value></block></value></block></value></block></xml>"},{"type":"InsertBlockAction","inserted_block":"block_gsUUhj","target_block":",bS)n1]kNNvB29Ns#mZj"},{"type":"BlockCreateAction","blockId":"ndXDzO","info":"operator_equals","block_xml":"<xml><block type='operator_equals' id='ndXDzO'><value name='OPERAND1'><shadow type='text'><field name='TEXT'/></shadow><block type='data_variable' id='block_LV73sz'><field name='VARIABLE' id='var_cRFF2S' variabletype=''>renamable_varAd</field></block></value><value name='OPERAND2'><shadow type='text'><field name='TEXT'>true</field></shadow></value></block></xml>"},{"type":"ReplaceAction","target_block":"K_OoF/clHo179g{Xc(~N","replace_with":"ndXDzO"},{"type":"BlockCreateAction","blockId":"DFVDEO","info":"operator_equals","block_xml":"<xml><block type='operator_equals' id='DFVDEO'><value name='OPERAND1'><shadow type='text'><field name='TEXT'/></shadow><block type='data_variable' id='block_E6rXiN'><field name='VARIABLE' id='var_cRFF2S' variabletype=''>renamable_varAd</field></block></value><value name='OPERAND2'><shadow type='text'><field name='TEXT'>true</field></shadow></value></block></xml>"},{"type":"ReplaceAction","target_block":"o0BI=gN2^kV;.y]tOS7K","replace_with":"DFVDEO"}],"invariants":[{"type":"BlockCreateAction","blockId":"@_invariant_check_t7e7yC","info":"procedures_call","block_xml":"<xml><block type='procedures_call' id='@_invariant_check_t7e7yC'><mutation proccode='assertEquals %s %s' argumentids='[&quot;varId&quot;,&quot;exprRootId&quot;]' warp='null'/><value name='varId'><shadow type='text'><field name='TEXT'></field></shadow><block type='data_variable'><field name='VARIABLE' id='var_cRFF2S' variabletype=''>renamable_varAd</field></block></value><value name='exprRootId'><shadow type='text'><field name='TEXT'></field></shadow><block type='operator_lt' id='71'><value name='OPERAND1'><shadow type='text' id='NO'><field name='TEXT'></field></shadow><block type='data_variable' id='qc'><field name='VARIABLE' id='_-@%-rmp7sIjJh%1B6?P-scroll y' variabletype=''>scroll y</field></block></value><value name='OPERAND2'><shadow type='text' id='ge'><field name='TEXT'></field></shadow><block type='operator_add' id='59'><value name='NUM1'><shadow type='math_number' id='Ni'><field name='NUM'>10</field></shadow><block type='data_variable' id='hU'><field name='VARIABLE' id='_-@%-rmp7sIjJh%1B6?P-height limit' variabletype=''>height limit</field></block></value><value name='NUM2'><shadow type='math_number' id='vS'><field name='NUM'>250</field></shadow></value></block></value></block></value></block></xml>"},{"type":"InsertBlockAction","inserted_block":"@_invariant_check_t7e7yC","target_block":"1wt+)AC|]dIr`KCb%bl{"},{"type":"BlockCreateAction","blockId":"@_invariant_check_RLN1RE","info":"procedures_call","block_xml":"<xml><block type='procedures_call' id='@_invariant_check_RLN1RE'><mutation proccode='assertEquals %s %s' argumentids='[&quot;varId&quot;,&quot;exprRootId&quot;]' warp='null'/><value name='varId'><shadow type='text'><field name='TEXT'></field></shadow><block type='data_variable'><field name='VARIABLE' id='var_cRFF2S' variabletype=''>renamable_varAd</field></block></value><value name='exprRootId'><shadow type='text'><field name='TEXT'></field></shadow><block type='operator_lt' id='uV'><value name='OPERAND1'><shadow type='text' id='HY'><field name='TEXT'></field></shadow><block type='data_variable' id='91'><field name='VARIABLE' id='_-@%-rmp7sIjJh%1B6?P-scroll y' variabletype=''>scroll y</field></block></value><value name='OPERAND2'><shadow type='text' id='8y'><field name='TEXT'></field></shadow><block type='operator_add' id='Vg'><value name='NUM1'><shadow type='math_number' id='W0'><field name='NUM'>10</field></shadow><block type='data_variable' id='Mk'><field name='VARIABLE' id='_-@%-rmp7sIjJh%1B6?P-height limit' variabletype=''>height limit</field></block></value><value name='NUM2'><shadow type='math_number' id='U6'><field name='NUM'>250</field></shadow></value></block></value></block></value></block></xml>"},{"type":"InsertBlockAction","inserted_block":"@_invariant_check_RLN1RE","target_block":",bS)n1]kNNvB29Ns#mZj"}],"info":{"num_blocks":539,"analysis_time":216,"expr_clone_group_size":2,"expr_clone_size":5,"num_blocks_changed":0},"smells":[]},{"id":"tXXkg","type":"extract_var","target":"Exit Level","transforms":[],"invariants":[],"info":{},"smells":["mbR1s~X?N_^%^q%~I(Rj","iCFmWFDN9?bu*}mt!_#~"]},{"id":"mGGEf","type":"extract_var","target":"Birdy","transforms":[],"invariants":[],"info":{},"smells":["/R_oFhbtz=#Ez2GSq?[)","l/m-Q])[X2UQG=GG=5A7"]}],"checkSetup":{"actions":[{"type":"VarDeclareAction","name":"__inv_failure_count","id":"__inv_failure_count"},{"type":"BlockCreateAction","blockId":null,"info":null,"block_xml":"<xml><block type='procedures_definition' id='assertEqualID'><value name='custom_block'><shadow type='procedures_prototype' id='nEy2N'><mutation proccode='assertEquals %s %s' argumentids='[&quot;varId&quot;,&quot;exprRootId&quot;]' argumentnames='[&quot;var&quot;,&quot;expr&quot;]' argumentdefaults='[&quot;&quot;,&quot;&quot;]' warp='false'/><value name='varId'><shadow type='argument_reporter_string_number' id='bF7Vzl'><field name='VALUE'>var</field></shadow></value><value name='exprRootId'><shadow type='argument_reporter_string_number' id='RgGmIN'><field name='VALUE'>expr</field></shadow></value></shadow></value><next><block type='control_if' id='VJPMFk'><value name='CONDITION'><block type='operator_not' id='yu2qrJ'><value name='OPERAND'><shadow type='text'><field name='TEXT'></field></shadow><block type='operator_equals' id='CvTCOE'><value name='OPERAND1'><shadow type='text'><field name='TEXT'></field></shadow><block type='argument_reporter_string_number' id='--inv-PDpxI4'><field name='VALUE'>var</field></block></value><value name='OPERAND2'><shadow type='text'><field name='TEXT'></field></shadow><block type='argument_reporter_string_number' id='--inv-ukYrV8'><field name='VALUE'>expr</field></block></value></block></value></block></value><statement name='SUBSTACK'><block type='data_changevariableby'><field name='VARIABLE' variabletype=''>__inv_failure_count</field><value name='VALUE'><shadow type='text'><field name='TEXT'>1</field></shadow></value></block></statement></block></next></block></xml>"}]},"project_metrics":{"num_failed_preconds":6,"num_procedures":3,"locs":382,"num_scripts":57,"num_smells":7,"num_scriptables":10,"num_vars":29,"num_blocks":539,"num_refactorables":7}};
+        let cache = {"improvables":[{"id":"WgMbA","type":"extract_var","target":"Back Deco","transforms":[],"invariants":[],"info":{},"smells":["Zq8t|iP;dqf6qq(#*+},","0;^UAm/U1efztZCHW(eX"]},{"id":"NEMdx","type":"extract_var","target":"Menu","transforms":[],"invariants":[],"info":{},"smells":["T[p5_`S-MgWeK~4Af|cs","n)^;vXv+*^cN!2XVWdK_"]},{"id":"UHtQG","type":"extract_var","target":"Menu","transforms":[],"invariants":[],"info":{},"smells":["d!?)UiNPrXJlT5r!|ar^","KLYf,_-rkvzePc[x+T`}"]},{"id":"o4MDF","type":"extract_var","target":"Menu","transforms":[],"invariants":[],"info":{},"smells":["g8(FqCWK-rU5AB^/Vq=}","TnK_p])nuw325YYlyJfO"]},{"id":"5i2AX","type":"extract_var","target":"Logo","transforms":[{"type":"VarDeclareAction","name":"renamable_varAd","id":"var_cRFF2S"},{"type":"BlockCreateAction","blockId":"block_gsUUhj","info":"data_setvariableto","block_xml":"<xml><block type='data_setvariableto' id='block_gsUUhj'><field name='VARIABLE' id='var_cRFF2S' variabletype=''>renamable_varAd</field><value name='VALUE'><shadow type='text'><field name='TEXT'>0</field></shadow><block type='operator_lt' id='EC'><value name='OPERAND1'><shadow type='text' id='xI'><field name='TEXT'></field></shadow><block type='data_variable' id='1s'><field name='VARIABLE' id='_-@%-rmp7sIjJh%1B6?P-scroll y' variabletype=''>scroll y</field></block></value><value name='OPERAND2'><shadow type='text' id='UJ'><field name='TEXT'></field></shadow><block type='operator_add' id='fw'><value name='NUM1'><shadow type='math_number' id='nu'><field name='NUM'>10</field></shadow><block type='data_variable' id='jm'><field name='VARIABLE' id='_-@%-rmp7sIjJh%1B6?P-height limit' variabletype=''>height limit</field></block></value><value name='NUM2'><shadow type='math_number' id='8u'><field name='NUM'>250</field></shadow></value></block></value></block></value></block></xml>"},{"type":"InsertBlockAction","inserted_block":"block_gsUUhj","target_block":",bS)n1]kNNvB29Ns#mZj"},{"type":"BlockCreateAction","blockId":"ndXDzO","info":"operator_equals","block_xml":"<xml><block type='operator_equals' id='ndXDzO'><value name='OPERAND1'><shadow type='text'><field name='TEXT'/></shadow><block type='data_variable' id='block_LV73sz'><field name='VARIABLE' id='var_cRFF2S' variabletype=''>renamable_varAd</field></block></value><value name='OPERAND2'><shadow type='text'><field name='TEXT'>true</field></shadow></value></block></xml>"},{"type":"ReplaceAction","target_block":"K_OoF/clHo179g{Xc(~N","replace_with":"ndXDzO"},{"type":"BlockCreateAction","blockId":"DFVDEO","info":"operator_equals","block_xml":"<xml><block type='operator_equals' id='DFVDEO'><value name='OPERAND1'><shadow type='text'><field name='TEXT'/></shadow><block type='data_variable' id='block_E6rXiN'><field name='VARIABLE' id='var_cRFF2S' variabletype=''>renamable_varAd</field></block></value><value name='OPERAND2'><shadow type='text'><field name='TEXT'>true</field></shadow></value></block></xml>"},{"type":"ReplaceAction","target_block":"o0BI=gN2^kV;.y]tOS7K","replace_with":"DFVDEO"}],"invariants":[{"type":"BlockCreateAction","blockId":"@_invariant_check_t7e7yC","info":"procedures_call","block_xml":"<xml><block type='procedures_call' id='@_invariant_check_t7e7yC'><mutation proccode='assertEquals %s %s' argumentids='[&quot;varId&quot;,&quot;exprRootId&quot;]' warp='null'/><value name='varId'><shadow type='text'><field name='TEXT'></field></shadow><block type='data_variable'><field name='VARIABLE' id='var_cRFF2S' variabletype=''>renamable_varAd</field></block></value><value name='exprRootId'><shadow type='text'><field name='TEXT'></field></shadow><block type='operator_lt' id='71'><value name='OPERAND1'><shadow type='text' id='NO'><field name='TEXT'></field></shadow><block type='data_variable' id='qc'><field name='VARIABLE' id='_-@%-rmp7sIjJh%1B6?P-scroll y' variabletype=''>scroll y</field></block></value><value name='OPERAND2'><shadow type='text' id='ge'><field name='TEXT'></field></shadow><block type='operator_add' id='59'><value name='NUM1'><shadow type='math_number' id='Ni'><field name='NUM'>10</field></shadow><block type='data_variable' id='hU'><field name='VARIABLE' id='_-@%-rmp7sIjJh%1B6?P-height limit' variabletype=''>height limit</field></block></value><value name='NUM2'><shadow type='math_number' id='vS'><field name='NUM'>250</field></shadow></value></block></value></block></value></block></xml>"},{"type":"InsertBlockAction","inserted_block":"@_invariant_check_t7e7yC","target_block":"1wt+)AC|]dIr`KCb%bl{"},{"type":"BlockCreateAction","blockId":"@_invariant_check_RLN1RE","info":"procedures_call","block_xml":"<xml><block type='procedures_call' id='@_invariant_check_RLN1RE'><mutation proccode='assertEquals %s %s' argumentids='[&quot;varId&quot;,&quot;exprRootId&quot;]' warp='null'/><value name='varId'><shadow type='text'><field name='TEXT'></field></shadow><block type='data_variable'><field name='VARIABLE' id='var_cRFF2S' variabletype=''>renamable_varAd</field></block></value><value name='exprRootId'><shadow type='text'><field name='TEXT'></field></shadow><block type='operator_lt' id='uV'><value name='OPERAND1'><shadow type='text' id='HY'><field name='TEXT'></field></shadow><block type='data_variable' id='91'><field name='VARIABLE' id='_-@%-rmp7sIjJh%1B6?P-scroll y' variabletype=''>scroll y</field></block></value><value name='OPERAND2'><shadow type='text' id='8y'><field name='TEXT'></field></shadow><block type='operator_add' id='Vg'><value name='NUM1'><shadow type='math_number' id='W0'><field name='NUM'>10</field></shadow><block type='data_variable' id='Mk'><field name='VARIABLE' id='_-@%-rmp7sIjJh%1B6?P-height limit' variabletype=''>height limit</field></block></value><value name='NUM2'><shadow type='math_number' id='U6'><field name='NUM'>250</field></shadow></value></block></value></block></value></block></xml>"},{"type":"InsertBlockAction","inserted_block":"@_invariant_check_RLN1RE","target_block":",bS)n1]kNNvB29Ns#mZj"}],"info":{"num_blocks":539,"analysis_time":216,"expr_clone_group_size":2,"expr_clone_size":5,"num_blocks_changed":0},"smells":[]},{"id":"tXXkg","type":"extract_var","target":"Exit Level","transforms":[],"invariants":[],"info":{},"smells":["mbR1s~X?N_^%^q%~I(Rj","iCFmWFDN9?bu*}mt!_#~"]},{"id":"mGGEf","type":"extract_var","target":"Birdy","transforms":[],"invariants":[],"info":{},"smells":["/R_oFhbtz=#Ez2GSq?[)","l/m-Q])[X2UQG=GG=5A7"]}],"checkSetup":{"actions":[{"type":"VarDeclareAction","name":"__inv_failure_count","id":"__inv_failure_count"},{"type":"BlockCreateAction","blockId":null,"info":null,"block_xml":"<xml><block type='procedures_definition' id='assertEqualID'><value name='custom_block'><shadow type='procedures_prototype' id='nEy2N'><mutation proccode='assertEquals %s %s' argumentids='[&quot;varId&quot;,&quot;exprRootId&quot;]' argumentnames='[&quot;var&quot;,&quot;expr&quot;]' argumentdefaults='[&quot;&quot;,&quot;&quot;]' warp='false'/><value name='varId'><shadow type='argument_reporter_string_number' id='bF7Vzl'><field name='VALUE'>var</field></shadow></value><value name='exprRootId'><shadow type='argument_reporter_string_number' id='RgGmIN'><field name='VALUE'>expr</field></shadow></value></shadow></value><next><block type='control_if' id='VJPMFk'><value name='CONDITION'><block type='operator_not' id='yu2qrJ'><value name='OPERAND'><shadow type='text'><field name='TEXT'></field></shadow><block type='operator_equals' id='CvTCOE'><value name='OPERAND1'><shadow type='text'><field name='TEXT'></field></shadow><block type='argument_reporter_string_number' id='--inv-PDpxI4'><field name='VALUE'>var</field></block></value><value name='OPERAND2'><shadow type='text'><field name='TEXT'></field></shadow><block type='argument_reporter_string_number' id='--inv-ukYrV8'><field name='VALUE'>expr</field></block></value></block></value></block></value><statement name='SUBSTACK'><block type='data_changevariableby'><field name='VARIABLE' variabletype=''>__inv_failure_count</field><value name='VALUE'><shadow type='text'><field name='TEXT'>1</field></shadow></value></block></statement></block></next></block></xml>"}]},"project_metrics":{"num_failed_preconds":6,"num_procedures":3,"locs":382,"num_scripts":57,"num_smells":7,"num_scriptables":10,"num_vars":29,"num_blocks":539,"num_refactorables":7}};
 
-        // return cache;
+        return cache;
 
         if (this.analysisInfo) {
             return this.analysisInfo;
@@ -772,29 +462,4 @@ class RefactoringEvaluator {
 
 }
 
-/**
- * Render previously run benchmark data.
- * @param {object} json data from a previous benchmark run.
- */
-const renderBenchmarkData = function (json) {
-    const vm = new window.VirtualMachine();
-    new ProfilerRun({ vm }).render(json);
-    setShareLink(json);
-};
-
-window.onload = function () {
-    if (location.hash.substring(1).startsWith('view')) {
-        document.body.className = 'render';
-        const data = location.hash.substring(6);
-        const frozen = atob(data);
-        const json = JSON.parse(frozen);
-        renderBenchmarkData(json);
-    } else {
-        runBenchmark();
-    }
-};
-
-window.onhashchange = function () {
-    location.reload();
-};
 

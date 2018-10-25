@@ -47,3 +47,68 @@ const loadProject = function (projectInputDom) {
     Scratch.vm.downloadProjectId(id);
     return id;
 };
+
+/**
+ * Render previously run benchmark data.
+ * @param {object} json data from a previous benchmark run.
+ */
+const renderBenchmarkData = function (json) {
+    const vm = new window.VirtualMachine();
+    new ProfilerRun({ vm }).render(json);
+    setShareLink(json);
+};
+
+
+
+
+
+//debugging utitlity
+const xmlButton = document.getElementById('getTargetXml');
+xmlButton.addEventListener("click", function () {
+    let xml = Scratch.vm.editingTarget.blocks.toXML();
+    let str = xml.replace(/\s+/g, ' '); // Keep only one space character
+    str = str.replace(/>\s*/g, '>');  // Remove space after >
+    str = str.replace(/\s*</g, '<');  // Remove space before <
+    str = str.replace(/"/g, "'");   //replace double quotes with single quotes
+    console.log(str);
+});
+
+const blockXmlButton = document.getElementById('getBlockXml');
+blockXmlButton.addEventListener("click", function () {
+    if(Blockly.selected){
+        let block = Blockly.selected;
+        let dom = Blockly.Xml.blockToDom(block);
+        let xml = Blockly.Xml.domToText(dom);
+        let str = xml.replace(/\s+/g, ' '); // Keep only one space character
+        str = str.replace(/>\s*/g, '>');  // Remove space after >
+        str = str.replace(/\s*</g, '<');  // Remove space before <
+        str = str.replace(/"/g, "'"); //replace double quotes with single quotes
+        console.log(str);
+    }
+});
+
+const blockIdToFocusInputBox = document.getElementById('blockIdToFocusTextInput');
+const centerOnBlockButton = document.getElementById('centerOnBlockButton');
+centerOnBlockButton.addEventListener("click", function(){
+    let id = blockIdToFocusInputBox.value;
+    Blockly.getMainWorkspace().centerOnBlock(id);
+    setTimeout(function(){
+        Blockly.getMainWorkspace().reportValue(id,id);
+    },500)
+});
+
+const cleanUpButton = document.getElementById("cleanup");
+cleanUpButton.addEventListener("click", function(){
+    Scratch.workspace.cleanUp();
+});
+
+const greenFlagButton = document.getElementById("greenFlag");
+greenFlagButton.addEventListener("click", function(){
+    Scratch.vm.runtime.start();
+    Scratch.vm.runtime.greenFlag();
+});
+
+const stopButton = document.getElementById("stop");
+stopButton.addEventListener("click", function(){
+    Scratch.vm.stopAll();
+});
