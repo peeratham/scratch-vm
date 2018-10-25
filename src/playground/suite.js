@@ -547,12 +547,13 @@ window.onload = function () {
     ]
 
     let extrvar_inspect_data = ['big-popular-art-207536546', 'expr-clone-235504161', 'ScratchProject6', 'ScratchProject7', 'big-popular-tutorials-243216409', 'expr-clone-237198187', 'expr-clone-247339697', 'expr-clone-246336982', 'expr-clone-251386278', 'ScratchProject4', 'expr-clone-252206906', 'ScratchProject1'];
-    
-    for (const proj of extrvar_inspect_data) {
+    let test_data = ['test_blocking'];
+
+    for (const proj of test_data) {
         suite.add(new BenchFixture({
             projectId: proj,
-            warmUpTime: 1000,
-            recordingTime: 3000
+            warmUpTime: 0,
+            recordingTime: 20000
         }));
     }
     

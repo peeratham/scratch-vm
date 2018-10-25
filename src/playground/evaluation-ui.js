@@ -10,8 +10,8 @@ selectedTarget.onchange = async function () {
 
 const profileButton = document.getElementById("profile");
 profileButton.addEventListener("click", async function(){
-    const projectReport = Scratch.projectReport =  { "project_id": projectId, "improvables": [] };
-    return;
+    const projectReport = Scratch.projectReport =  { "project_id": Project.ID, "improvables": [] };
+    
     let targetInvariantChecks = new Set(["block_TKnelX","block_kEPt4r"]);
 
     document.getElementById('improvables').value
@@ -22,7 +22,10 @@ profileButton.addEventListener("click", async function(){
     if(Scratch.refactorableKV[refactorable_id]){
         initialReport = Scratch.refactorableKV[refactorable_id].info;
     }
-    let profilerRun = Scratch.ProfileRun = new ProfilerRun({ vm: Scratch.vm, warmUpTime, maxRecordedTime:5000, projectId: projectId, initialReport:initialReport, resultDiv: resultDiv, targetInvariantChecks });
+    //todo: passing in resultDiv or instance of object rendering result
+    const resultDiv = document.getElementById('profile-refactoring-result');
+    
+    let profilerRun = Scratch.ProfileRun = new ProfilerRun({ vm: Scratch.vm, warmUpTime, maxRecordedTime:maxRecordedTime, projectId: Project.ID, initialReport:initialReport, resultDiv: resultDiv, targetInvariantChecks });
     await profilerRun.run();
     console.log("coverage:" + profilerRun.coverage());
     

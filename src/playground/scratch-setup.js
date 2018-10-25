@@ -1,4 +1,5 @@
 const Scratch = window.Scratch = window.Scratch || {};
+const Project = window.Project = window.Project || {};
 
 window.onload = function () {
     if (location.hash.substring(1).startsWith('view')) {
@@ -97,12 +98,12 @@ const setupScratch = function(){
         maxRecordedTime = Number(split[2] || '0') || 6000;
     }
     
-    maxRecordedTime = 1000;
     
     const resultDiv = document.getElementById('profile-refactoring-result');
     resultDiv.innerHTML = "<table border='0'></table>"
     
-    const projectId = loadProject(projectInput);
+    const projectId = Project.ID = loadProject(projectInput);
+    
     
     Scratch.vm.on('workspaceReady', data => {
         let evaluator = new RefactoringEvaluator(projectId, data, manualMode, resultDiv);

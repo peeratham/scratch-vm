@@ -1,3 +1,8 @@
+
+/**
+* RunningStats updates its model (data) in real-time steps looped and number of blocks being executed
+ RunningStatsView uses RunningStats to display information on the wepage
+*/
 class RunningStats {
     constructor(profiler) {
         this.stepThreadsInnerId = profiler.idByName('Sequencer.stepThreads#inner');
