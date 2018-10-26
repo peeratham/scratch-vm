@@ -112,3 +112,35 @@ const stopButton = document.getElementById("stop");
 stopButton.addEventListener("click", function(){
     Scratch.vm.stopAll();
 });
+
+function taChange() {
+    var textarea = document.getElementById('importExport');
+    if (sessionStorage) {
+      sessionStorage.setItem('textarea', textarea.value)
+    }
+    var valid = true;
+    try {
+      Blockly.Xml.textToDom(textarea.value);
+    } catch (e) {
+      valid = false;
+    }
+    document.getElementById('import').disabled = !valid;
+}
+
+function toXml() {
+    var output = document.getElementById('importExport');
+    var xml = Blockly.Xml.workspaceToDom(Scratch.workspace);
+    output.value = Blockly.Xml.domToPrettyText(xml);
+    output.focus();
+    output.select();
+    taChange();
+}
+
+function fromXml() {
+    var input = document.getElementById('importExport');
+    var xml = Blockly.Xml.textToDom(input.value);
+    Blockly.Xml.domToWorkspace(xml, Scratch.workspace);
+    taChange();
+}
+
+

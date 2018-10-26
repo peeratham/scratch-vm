@@ -14,6 +14,7 @@
   <div class="run-form">
       <input type="text" id="projectIdInput" value="">
       <button class="run">reload</button>
+      <button id='analyze'>analyze</button>
   </div>
   <div>
     <button id="getTargetXml">get Tareget's XML</button>
@@ -35,7 +36,7 @@
     <button id='markAsFailButton'>Mark refactoring as failure</button>
   </div>
 
-  
+
   <canvas id="scratch-stage"></canvas><br />
 
   <div class="loading">
@@ -64,7 +65,11 @@
         </div>
     </a>
   </div>
+  <input type="button" value="Export to XML" onclick="toXml()">
+  <input type="button" value="Import from XML" onclick="fromXml()" id="import" disabled=""><br>
+  <textarea id="importExport" style="width: 26%; height: 12em" onchange="taChange();" onkeyup="taChange()"></textarea>
   
+
 
   <div class="profile-tables">
   <div id="profile-refactoring-result"></div>

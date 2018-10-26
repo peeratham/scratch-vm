@@ -106,8 +106,8 @@ const setupScratch = function(){
     
     
     Scratch.vm.on('workspaceReady', data => {
-        let evaluator = new RefactoringEvaluator(projectId, data, manualMode, resultDiv);
-        evaluator.runAll();
+//         let evaluator = new RefactoringEvaluator(projectId, data, manualMode, resultDiv);
+//         evaluator.runAll();
     
     });
 
@@ -130,8 +130,17 @@ const setupScratch = function(){
             selectedTarget.appendChild(targetOption);
         }
     });
-    
-    
+
+
+    // xml text box
+    if (sessionStorage) {
+        // Restore previously displayed text.
+        var text = sessionStorage.getItem('textarea');
+        if (text) {
+          document.getElementById('importExport').value = text;
+        }
+        taChange();
+    }    
     
     // Instantiate the renderer and connect it to the VM.
     const canvas = document.getElementById('scratch-stage');
