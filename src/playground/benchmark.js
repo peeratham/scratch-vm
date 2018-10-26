@@ -10,6 +10,46 @@ document.querySelector('.run').addEventListener('click', () => {
         location.reload();
     }, false);
 
+
+const profileButton = document.getElementById("profile");
+profileButton.addEventListener("click", async function(){
+    const projectReport = Scratch.projectReport =  { "project_id": Project.ID, "improvables": [] };
+    
+    let targetInvariantChecks = new Set(["block_TKnelX","block_kEPt4r"]);
+
+    document.getElementById('improvables').value
+    let refactorable_id = document.getElementById('improvables').value;
+    projectReport['project_metrics'] = Scratch.json['project_metrics'];
+
+    let initialReport = {refactorable_id};
+    if(Scratch.refactorableKV[refactorable_id]){
+        initialReport = Scratch.refactorableKV[refactorable_id].info;
+    }
+    //todo: passing in resultDiv or instance of object rendering result
+    const resultDiv = document.getElementById('profile-refactoring-result');
+    
+    let profilerRun = Scratch.ProfileRun = new ProfilerRun({ vm: Scratch.vm, warmUpTime, maxRecordedTime:maxRecordedTime, projectId: Project.ID, initialReport:initialReport, resultDiv: resultDiv, targetInvariantChecks });
+    await profilerRun.run();
+    
+    //prepare final report for this refactoring
+    profilerRun.resultTable.render();
+    
+//     initialReport.refactorable_id = refactorable_id;
+
+    console.log(initialReport);
+    projectReport["improvables"].push(initialReport);
+
+    //get some extra info from check box etc. notes
+    //send it to suite!
+    const doneButton = document.getElementById("done");
+    doneButton.addEventListener("click", function(){
+        window.parent.postMessage({
+            type: 'BENCH_MESSAGE_COMPLETE',
+            projectReport: projectReport
+        }, '*');
+    });
+});
+
 /**
 * Refactorings keep track of stats specific to refactoring both already analyzed from the server and some that are augmented
 e.g. safety evaluation info.
@@ -20,18 +60,34 @@ class Refactorings {
         this.executedBlockIds = null;
         this.stats = new IdStatView(report);
         this.numBlocksCovered = 0;
+        this.totalReachableStmt = 21;
+        this.completed = 0;
     }
 
     //update block ids that have been executed so far
     // try to keep track of unique blocks counted
-    update(blockIdRecords) {
-        if(Object.keys(blockIdRecords).length!=this.numBlocksCovered){
-            this.numBlocksCovered = Object.keys(blockIdRecords).length;
-            console.log(this.numBlocksCovered);
+    update() {
+        let ids = Object.keys(this.blockIdRecords);
+        if(ids.length!=this.numBlocksCovered){
+            this.numBlocksCovered = ids.length;
+            this.completed = this.numBlocksCovered/this.totalReachableStmt;
+            console.log((this.completed*100)+"%");
+        }
+    }
+
+    shouldStop(){
+        const failures = Object.keys(this.blockIdRecords).filter(k => k.startsWith("#invariant_failure_counter"));
+        if(failures.length>0){
+            this.stats.update(failures);
+            return true;
         }
         
-        const failures = Object.keys(blockIdRecords).filter(k => k.startsWith("__inv_failure_counter"));
-        this.stats.update(failures);
+        // completion relative to orginal blocks not including invariant checks
+        if(this.completed >= 1.3){
+            return true;
+        }
+
+        return false;
     }
 }
 
@@ -86,14 +142,13 @@ class ProfilerRun {
             stats
         });
 
-        const stepId = profiler.idByName('Runtime._step');
-        profiler.onFrame = ({ id, selfTime, totalTime, arg }) => {
-            if (id === stepId) {
-                runningStatsView.render();
-            }
-            runningStats.update(id, selfTime, totalTime, arg);
-            stats.update(profiler.blockIdRecords);
-        };
+       
+    }
+
+    stopProfileRun(){
+        this.vm.runtime.disableProfiling();
+        this.vm.stopAll();
+        clearTimeout(this.vm.runtime._steppingInterval);
     }
 
     //TODO: remove this
@@ -102,9 +157,8 @@ class ProfilerRun {
     }
 
     runProfiler() {
-        console.log("run profiler...");
         this.vm.start();
-        //TODO: apply refactoring, before greenFlag
+        
         setTimeout(() => {
             window.parent.postMessage({
                 type: 'BENCH_MESSAGE_WARMING_UP'
@@ -117,34 +171,50 @@ class ProfilerRun {
             }, '*');
             this.vm.runtime.profiler = this.profiler;
         }, 100 + this.warmUpTime);
-
+        
+        const profiler = this.profiler;
+        const stepId = profiler.idByName('Runtime._step');
+        profiler.onFrame = ({ id, selfTime, totalTime, arg }) => {
+            if (id === stepId) {
+                this.runningStatsView.render();
+            }
+            this.runningStats.update(id, selfTime, totalTime, arg);
+            this.stats.update();
+        };
+        
         return new Promise((resolve, reject) => {
-            setTimeout(() => {
-                console.log("cleaning up");
-                this.vm.stopAll();
-                clearTimeout(this.vm.runtime._steppingInterval);
-
-                let failures = Object.keys(this.profiler.blockIdRecords).filter(k => k.startsWith("_assertion_failed"));
-                if (failures.length > 0) {
-                    this.report.success = false;
-                }
-                //TODO: Scratch.vm.runtime.getTargetForStage().lookupVariableById(vid).value
-
-                this.vm.runtime.profiler = null;
+            var stopOnTimeLimit = setTimeout(() => {
+                this.stopProfileRun();
+                clearInterval(checkCompletion);
+//                 let failures = Object.keys(this.profiler.blockIdRecords).filter(k => k.startsWith("_assertion_failed"));
+//                 if (failures.length > 0) {
+//                     this.report.success = false;
+//                 }
+//                 //TODO: Scratch.vm.runtime.getTargetForStage().lookupVariableById(vid).value
+//                 this.vm.runtime.profiler = null;
                 resolve();
             }, 100 + this.warmUpTime + this.maxRecordedTime);
+
+            var checkCompletion = setInterval(()=>{
+                 if(this.stats.shouldStop()){
+                    this.stopProfileRun();
+                    clearTimeout(stopOnTimeLimit);
+                    clearInterval(checkCompletion);
+                    resolve();
+                }
+            }, 10);
         });
     }
 
-    coverage() {
-        let executedBlocks = new Set(Object.keys(this.profiler.blockIdRecords));
-        let covered_checks = Object.keys(this.profiler.blockIdRecords).filter(k => k.startsWith("@_invariant_check_"));
-        console.log(covered_checks);
-        let coverage =0.5;
-        // let uncoveredChecks = new Set([...this.targetInvariantChecks].filter(x => !executedBlocks.has(x)));
-        // let coverage = (this.targetInvariantChecks.size - uncoveredChecks.size) / this.targetInvariantChecks.size;
-        return coverage;
-    }
+//     coverage() {
+//         let executedBlocks = new Set(Object.keys(this.profiler.blockIdRecords));
+//         let covered_checks = Object.keys(this.profiler.blockIdRecords).filter(k => k.startsWith("@_invariant_check_"));
+//         console.log(covered_checks);
+//         let coverage =0.5;
+//         // let uncoveredChecks = new Set([...this.targetInvariantChecks].filter(x => !executedBlocks.has(x)));
+//         // let coverage = (this.targetInvariantChecks.size - uncoveredChecks.size) / this.targetInvariantChecks.size;
+//         return coverage;
+//     }
 
     render(json) {
         const { fixture } = json;
@@ -173,7 +243,7 @@ class RefactoringEvaluator {
         this.analysisInfo = null;
     }
     async getAnalysisInfo() {
-        let cache = {"improvables":[{"id":"8puAy","type":"extract_var","target":"Sprite1","transforms":[{"type":"VarDeclareAction","name":"renamable_var4W","id":"var_DtYbSI"},{"type":"BlockCreateAction","blockId":"block_ttP9UL","info":"data_setvariableto","block_xml":"<xml><block type='data_setvariableto' id='block_ttP9UL'><field name='VARIABLE' id='var_DtYbSI' variabletype=''>renamable_var4W</field><value name='VALUE'><shadow type='text'><field name='TEXT'>0</field></shadow><block type='operator_round' id='mF'><value name='NUM'><shadow type='math_number' id='Bw'><field name='NUM'></field></shadow><block type='operator_divide' id='ab'><value name='NUM1'><shadow type='math_number' id='8D'><field name='NUM'></field></shadow><block type='data_variable' id='yQ'><field name='VARIABLE' id='`jEk@4|i[#Fk?(8x)AV.-my variable' variabletype=''>my variable</field></block></value><value name='NUM2'><shadow type='math_number' id='Jw'><field name='NUM'>10</field></shadow></value></block></value></block></value></block></xml>"},{"type":"InsertBlockAction","inserted_block":"block_ttP9UL","target_block":"OMb15qBkM449oqpt#B1y"},{"type":"BlockCreateAction","blockId":"block_mKmosv","info":"data_variable","block_xml":"<xml><block type='data_variable' id='block_mKmosv'><field name='VARIABLE' id='var_DtYbSI' variabletype=''>renamable_var4W</field></block></xml>"},{"type":"ReplaceAction","target_block":"$5Y`0g5kAFF{87.8]UEJ","replace_with":"block_mKmosv"},{"type":"BlockCreateAction","blockId":"block_rUbySP","info":"data_variable","block_xml":"<xml><block type='data_variable' id='block_rUbySP'><field name='VARIABLE' id='var_DtYbSI' variabletype=''>renamable_var4W</field></block></xml>"},{"type":"ReplaceAction","target_block":"{29LNjX})_,mt%-7gKWD","replace_with":"block_rUbySP"}],"invariants":[{"type":"BlockCreateAction","blockId":"@_invariant_check_rjtSGe","info":"procedures_call","block_xml":"<xml><block type='procedures_call' id='@_invariant_check_rjtSGe'><mutation proccode='assertEquals %s %s' argumentids='[&quot;varId&quot;,&quot;exprRootId&quot;]' warp='null'/><value name='varId'><shadow type='text'><field name='TEXT'></field></shadow><block type='data_variable'><field name='VARIABLE' id='var_DtYbSI' variabletype=''>renamable_var4W</field></block></value><value name='exprRootId'><shadow type='text'><field name='TEXT'></field></shadow><block type='operator_round' id='Sl'><value name='NUM'><shadow type='math_number' id='cJ'><field name='NUM'></field></shadow><block type='operator_divide' id='JD'><value name='NUM1'><shadow type='math_number' id='KR'><field name='NUM'></field></shadow><block type='data_variable' id='Y8'><field name='VARIABLE' id='`jEk@4|i[#Fk?(8x)AV.-my variable' variabletype=''>my variable</field></block></value><value name='NUM2'><shadow type='math_number' id='5B'><field name='NUM'>10</field></shadow></value></block></value></block></value></block></xml>"},{"type":"InsertBlockAction","inserted_block":"@_invariant_check_rjtSGe","target_block":"[#04tE|XJ^HC4475%psJ"},{"type":"BlockCreateAction","blockId":"@_invariant_check_eeD2rC","info":"procedures_call","block_xml":"<xml><block type='procedures_call' id='@_invariant_check_eeD2rC'><mutation proccode='assertEquals %s %s' argumentids='[&quot;varId&quot;,&quot;exprRootId&quot;]' warp='null'/><value name='varId'><shadow type='text'><field name='TEXT'></field></shadow><block type='data_variable'><field name='VARIABLE' id='var_DtYbSI' variabletype=''>renamable_var4W</field></block></value><value name='exprRootId'><shadow type='text'><field name='TEXT'></field></shadow><block type='operator_round' id='2b'><value name='NUM'><shadow type='math_number' id='7y'><field name='NUM'></field></shadow><block type='operator_divide' id='3P'><value name='NUM1'><shadow type='math_number' id='oL'><field name='NUM'></field></shadow><block type='data_variable' id='uS'><field name='VARIABLE' id='`jEk@4|i[#Fk?(8x)AV.-my variable' variabletype=''>my variable</field></block></value><value name='NUM2'><shadow type='math_number' id='An'><field name='NUM'>10</field></shadow></value></block></value></block></value></block></xml>"},{"type":"InsertBlockAction","inserted_block":"@_invariant_check_eeD2rC","target_block":"26=1Bcw)bUu~}O@z;W7o"}],"info":{"num_blocks":29,"analysis_time":54,"expr_clone_group_size":2,"expr_clone_size":4,"num_blocks_changed":0},"smells":[]}],"checkSetup":{"actions":[{"type":"VarDeclareAction","name":"__inv_failure_count","id":"__inv_failure_count"},{"type":"BlockCreateAction","blockId":null,"info":null,"block_xml":"<xml><block type='procedures_definition' id='assertEqualID'><value name='custom_block'><shadow type='procedures_prototype' id='IuyWt'><mutation proccode='assertEquals %s %s' argumentids='[&quot;varId&quot;,&quot;exprRootId&quot;]' argumentnames='[&quot;var&quot;,&quot;expr&quot;]' argumentdefaults='[&quot;&quot;,&quot;&quot;]' warp='false'/><value name='varId'><shadow type='argument_reporter_string_number' id='JkwEZG'><field name='VALUE'>var</field></shadow></value><value name='exprRootId'><shadow type='argument_reporter_string_number' id='AEbTyw'><field name='VALUE'>expr</field></shadow></value></shadow></value><next><block type='control_if' id='KsHyb7'><value name='CONDITION'><block type='operator_not' id='TtIg4y'><value name='OPERAND'><shadow type='text'><field name='TEXT'></field></shadow><block type='operator_equals' id='U1IFUz'><value name='OPERAND1'><shadow type='text'><field name='TEXT'></field></shadow><block type='argument_reporter_string_number' id='--inv-fbgskK'><field name='VALUE'>var</field></block></value><value name='OPERAND2'><shadow type='text'><field name='TEXT'></field></shadow><block type='argument_reporter_string_number' id='--inv-IiziDr'><field name='VALUE'>expr</field></block></value></block></value></block></value><statement name='SUBSTACK'><block type='data_changevariableby'><field name='VARIABLE' variabletype=''>__inv_failure_count</field><value name='VALUE'><shadow type='text'><field name='TEXT'>1</field></shadow></value></block></statement></block></next></block></xml>"}]},"project_metrics":{"locs":23,"num_procedures":0,"num_scripts":3,"num_smells":1,"num_scriptables":2,"num_vars":3,"num_blocks":29,"num_refactorables":1}};
+        let cache = {"improvables":[{"id":"8puAy","type":"extract_var","target":"Sprite1","transforms":[{"type":"VarDeclareAction","name":"renamable_var4W","id":"var_DtYbSI"},{"type":"BlockCreateAction","blockId":"block_ttP9UL","info":"data_setvariableto","block_xml":"<xml><block type='data_setvariableto' id='block_ttP9UL'><field name='VARIABLE' id='var_DtYbSI' variabletype=''>renamable_var4W</field><value name='VALUE'><shadow type='text'><field name='TEXT'>0</field></shadow><block type='operator_round' id='mF'><value name='NUM'><shadow type='math_number' id='Bw'><field name='NUM'></field></shadow><block type='operator_divide' id='ab'><value name='NUM1'><shadow type='math_number' id='8D'><field name='NUM'></field></shadow><block type='data_variable' id='yQ'><field name='VARIABLE' id='`jEk@4|i[#Fk?(8x)AV.-my variable' variabletype=''>my variable</field></block></value><value name='NUM2'><shadow type='math_number' id='Jw'><field name='NUM'>10</field></shadow></value></block></value></block></value></block></xml>"},{"type":"InsertBlockAction","inserted_block":"block_ttP9UL","target_block":"OMb15qBkM449oqpt#B1y"},{"type":"BlockCreateAction","blockId":"block_mKmosv","info":"data_variable","block_xml":"<xml><block type='data_variable' id='block_mKmosv'><field name='VARIABLE' id='var_DtYbSI' variabletype=''>renamable_var4W</field></block></xml>"},{"type":"ReplaceAction","target_block":"$5Y`0g5kAFF{87.8]UEJ","replace_with":"block_mKmosv"},{"type":"BlockCreateAction","blockId":"block_rUbySP","info":"data_variable","block_xml":"<xml><block type='data_variable' id='block_rUbySP'><field name='VARIABLE' id='var_DtYbSI' variabletype=''>renamable_var4W</field></block></xml>"},{"type":"ReplaceAction","target_block":"{29LNjX})_,mt%-7gKWD","replace_with":"block_rUbySP"}],"invariants":[{"type":"BlockCreateAction","blockId":"@_invariant_check_rjtSGe","info":"procedures_call","block_xml":"<xml><block type='procedures_call' id='@_invariant_check_rjtSGe'><mutation proccode='assertEquals %s %s' argumentids='[&quot;varId&quot;,&quot;exprRootId&quot;]' warp='null'/><value name='varId'><shadow type='text'><field name='TEXT'></field></shadow><block type='data_variable'><field name='VARIABLE' id='var_DtYbSI' variabletype=''>renamable_var4W</field></block></value><value name='exprRootId'><shadow type='text'><field name='TEXT'></field></shadow><block type='operator_round' id='Sl'><value name='NUM'><shadow type='math_number' id='cJ'><field name='NUM'></field></shadow><block type='operator_divide' id='JD'><value name='NUM1'><shadow type='math_number' id='KR'><field name='NUM'></field></shadow><block type='data_variable' id='Y8'><field name='VARIABLE' id='`jEk@4|i[#Fk?(8x)AV.-my variable' variabletype=''>my variable</field></block></value><value name='NUM2'><shadow type='math_number' id='5B'><field name='NUM'>10</field></shadow></value></block></value></block></value></block></xml>"},{"type":"InsertBlockAction","inserted_block":"@_invariant_check_rjtSGe","target_block":"[#04tE|XJ^HC4475%psJ"},{"type":"BlockCreateAction","blockId":"@_invariant_check_eeD2rC","info":"procedures_call","block_xml":"<xml><block type='procedures_call' id='@_invariant_check_eeD2rC'><mutation proccode='assertEquals %s %s' argumentids='[&quot;varId&quot;,&quot;exprRootId&quot;]' warp='null'/><value name='varId'><shadow type='text'><field name='TEXT'></field></shadow><block type='data_variable'><field name='VARIABLE' id='var_DtYbSI' variabletype=''>renamable_var4W</field></block></value><value name='exprRootId'><shadow type='text'><field name='TEXT'></field></shadow><block type='operator_round' id='2b'><value name='NUM'><shadow type='math_number' id='7y'><field name='NUM'></field></shadow><block type='operator_divide' id='3P'><value name='NUM1'><shadow type='math_number' id='oL'><field name='NUM'></field></shadow><block type='data_variable' id='uS'><field name='VARIABLE' id='`jEk@4|i[#Fk?(8x)AV.-my variable' variabletype=''>my variable</field></block></value><value name='NUM2'><shadow type='math_number' id='An'><field name='NUM'>10</field></shadow></value></block></value></block></value></block></xml>"},{"type":"InsertBlockAction","inserted_block":"@_invariant_check_eeD2rC","target_block":"26=1Bcw)bUu~}O@z;W7o"}],"info":{"num_blocks":29,"analysis_time":54,"expr_clone_group_size":2,"expr_clone_size":4,"num_blocks_changed":0},"smells":[]}],"checkSetup":{"actions":[{"type":"VarDeclareAction","name":"__inv_failure_count","id":"__inv_failure_count"},{"type":"BlockCreateAction","blockId":null,"info":null,"block_xml":"<xml><block type='procedures_definition' id='assertEqualID'><value name='custom_block'><shadow type='procedures_prototype' id='IuyWt'><mutation proccode='assertEquals %s %s' argumentids='[&quot;varId&quot;,&quot;exprRootId&quot;]' argumentnames='[&quot;var&quot;,&quot;expr&quot;]' argumentdefaults='[&quot;&quot;,&quot;&quot;]' warp='false'/><value name='varId'><shadow type='argument_reporter_string_number' id='JkwEZG'><field name='VALUE'>var</field></shadow></value><value name='exprRootId'><shadow type='argument_reporter_string_number' id='AEbTyw'><field name='VALUE'>expr</field></shadow></value></shadow></value><next><block type='control_if' id='KsHyb7'><value name='CONDITION'><block type='operator_not' id='TtIg4y'><value name='OPERAND'><shadow type='text'><field name='TEXT'></field></shadow><block type='operator_equals' id='U1IFUz'><value name='OPERAND1'><shadow type='text'><field name='TEXT'></field></shadow><block type='argument_reporter_string_number' id='--inv-fbgskK'><field name='VALUE'>var</field></block></value><value name='OPERAND2'><shadow type='text'><field name='TEXT'></field></shadow><block type='argument_reporter_string_number' id='--inv-IiziDr'><field name='VALUE'>expr</field></block></value></block></value></block></value><statement name='SUBSTACK'><block type='data_changevariableby' id='#invariant_failure_counter'><field name='VARIABLE' variabletype=''>__inv_failure_count</field><value name='VALUE'><shadow type='text'><field name='TEXT'>1</field></shadow></value></block></statement></block></next></block></xml>"}]},"project_metrics":{"locs":23,"num_procedures":0,"num_scripts":3,"num_smells":1,"num_scriptables":2,"num_vars":3,"num_blocks":29,"num_refactorables":1}};
 
         return cache;
 

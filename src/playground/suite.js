@@ -357,7 +357,6 @@ class BenchSuiteResultView {
 
         suite.on('result', result => {
             this.views[result.fixture.id].update(result);
-            console.log("update bench result view");
         });
     }
 
@@ -553,7 +552,7 @@ window.onload = function () {
         suite.add(new BenchFixture({
             projectId: proj,
             warmUpTime: 0,
-            recordingTime: 20000
+            recordingTime: 15000
         }));
     }
     
