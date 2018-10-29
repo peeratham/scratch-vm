@@ -240,7 +240,7 @@ const sendAnalysisRequestFun = async function(projectId){
             "Content-Type": "text/xml",
             "id": projectId,
             "type": "duplicate-expression",
-            'evalMode': false
+            'evalMode': true
         },
         body: xml,
     });
@@ -290,6 +290,16 @@ const populateWalkThru = function(improvable){
 
 };
 
+const switchTarget =  async function(refactoringTarget) {
+    if (Scratch.vm.editingTarget.getName() != refactoringTarget) {
+        console.log("switch target to:" + refactoringTarget);
+        let targetId = Scratch.vm.runtime.targets.filter(t => t.getName() === refactoringTarget)[0].id;
+        Blockly.Events.recordUndo = false;
+        await Scratch.vm.setEditingTarget(targetId);
+        Blockly.Events.recordUndo = true;
+    }
+}
+
 
 const renderRefactorableList = function(refactorables, json){
     if (json.error != null) {
@@ -322,7 +332,12 @@ const renderRefactorableList = function(refactorables, json){
             await Scratch.workspace.undo();
             await Blockly.Events.fireNow_();
         }
+
         
+        //TODO: switch target if needed
+        let refactoringTarget = improvable["target"];
+        await switchTarget(refactoringTarget);
+
         await applyTransformations(improvable.transforms,{});
         await setupInvariantChecks(json['checkSetup'], improvable.invariants);
 
