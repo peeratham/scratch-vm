@@ -546,7 +546,7 @@ window.onload = function () {
     ]
 
     let extrvar_inspect_data = ['big-popular-art-207536546', 'expr-clone-235504161', 'ScratchProject6', 'ScratchProject7', 'big-popular-tutorials-243216409', 'expr-clone-237198187', 'expr-clone-247339697', 'expr-clone-246336982', 'expr-clone-251386278', 'ScratchProject4', 'expr-clone-252206906', 'ScratchProject1'];
-    let test_data = ['empty','test_blocking'];
+    let test_data = ['empty','test_blocking','test-coverage'];
 
     for (const proj of extrvar_inspect_data) {
         suite.add(new BenchFixture({

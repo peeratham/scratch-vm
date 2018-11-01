@@ -76,6 +76,7 @@ class Refactorings {
     update() {
         let ids = Object.keys(this.blockIdRecords);
         if(ids.length!=this.numBlocksCovered){
+            console.log(this.blockIdRecords);
             this.numBlocksCovered = ids.length;
             this.completed = this.numBlocksCovered/this.totalReachableStmt;
             console.log((this.completed*100)+"%");
@@ -230,7 +231,6 @@ const sendAnalysisRequestFun = async function(projectId){
     const xml = await new Promise(function (resolve, reject) {
         resolve(getProgramXml());
     });
-    console.log(xml);
 
     const response = await fetch(url, {
         method: "POST",
@@ -311,6 +311,10 @@ const renderRefactorableList = function(refactorables, json){
     
     var refactorableData = json['improvables'];
     let refactorableKV = Scratch.refactorableKV = {};
+
+    //TODO sort which to show first (refactorable transform >0 then smell)
+    let sortedRefactorables = refactorableData.sort((ref1,ref2)=>ref2.transforms.length-ref1.transforms.length);
+    refactorableData = sortedRefactorables;
 
     for (let i = 0; i < refactorableData.length; i++) {
         refactorableKV[refactorableData[i].id] = refactorableData[i];
