@@ -2,9 +2,9 @@ const projectInput = document.querySelector('input');
 
 const manualMode = true;
 let warmUpTime = 2000;
-let maxRecordedTime = 10000;
+let maxRecordedTime = 100*1000;
 const WORK_TIME = 0.75;
-
+const invariantCheckNumStmt = 1; //the counter which may not be encountered if behavior is safe
 document.querySelector('.run').addEventListener('click', () => {
         window.location.hash = projectInput.value;
         location.reload();
@@ -29,9 +29,13 @@ profileButton.addEventListener("click", async function(){
          // prepare profileRun parameters
         var resultDiv = document.getElementById('profile-refactoring-result');
         var targetInvariantChecks = []; // TODO get from coverageInfo
+
+        //TODO: totolReachableStmt
+        var numReachableStmt = Scratch.refactorableKV[refactorable_id].coverageInfo.numBlocks;
+        var coverageInfo = Scratch.refactorableKV[refactorable_id].coverageInfo;
     }
     
-    let profilerRun = Scratch.ProfileRun = new ProfilerRun({ vm: Scratch.vm, warmUpTime, maxRecordedTime:maxRecordedTime, projectId: Project.ID, initialReport:initialReport, resultDiv: resultDiv, targetInvariantChecks });
+    let profilerRun = Scratch.ProfileRun = new ProfilerRun({ vm: Scratch.vm, warmUpTime, maxRecordedTime:maxRecordedTime, projectId: Project.ID, initialReport:initialReport, resultDiv: resultDiv, targetInvariantChecks, coverageInfo});
     await profilerRun.runProfiler();
     
     // if improvable is selected only
@@ -62,36 +66,47 @@ analyzeButton.addEventListener("click", async function(){
 e.g. safety evaluation info.
 */
 class Refactorings {
-    constructor(profiler, report) {
+    constructor(profiler, report, coverageInfo) {
         this.blockIdRecords = profiler.blockIdRecords;
         this.executedBlockIds = null;
         this.stats = new IdStatView(report);
         this.numBlocksCovered = 0;
         this.totalReachableStmt = 21;
         this.completed = 0;
+        //TODO: totolReachableStmt
+        this.coverageInfo = coverageInfo;
+        this.ids = [];   //set of covered statement block ids
     }
 
     //update block ids that have been executed so far
     // try to keep track of unique blocks counted
+
     update() {
-        let ids = Object.keys(this.blockIdRecords);
-        if(ids.length!=this.numBlocksCovered){
+        this.ids = Object.keys(this.blockIdRecords);
+        if(this.ids.length!=this.numBlocksCovered){
             console.log(this.blockIdRecords);
-            this.numBlocksCovered = ids.length;
-            this.completed = this.numBlocksCovered/this.totalReachableStmt;
+            this.numBlocksCovered = this.ids.length;
+            this.completed = this.numBlocksCovered/(this.coverageInfo.numBlocks-invariantCheckNumStmt);
             console.log((this.completed*100)+"%");
         }
     }
 
     shouldStop(){
-        const failures = Object.keys(this.blockIdRecords).filter(k => k.startsWith("#invariant_failure_counter"));
-        if(failures.length>0){
-            this.stats.update(failures);
+        const failed = this.ids.indexOf("#failed_inv_counter")!==-1;
+        const invariantCovered = this.ids.filter(k => k.startsWith("#invariant_check_"));
+        if(invariantCovered.length>0){
+            //TODO: total invariants covered so far
+            let percentInvariantCovered = invariantCovered.length/(this.coverageInfo.invariantIds.length);
+            console.log("invariant covered: "+(percentInvariantCovered*100)+"%");
+        }
+
+        if(failed){
+            this.stats.update(invariantCovered.splice(-1,1)); //object map key is in the order it was inserted
             return true;
         }
         
         // completion relative to orginal blocks not including invariant checks
-        if(this.completed >= 1.3){
+        if(this.completed >= 1){
             return true;
         }
 
@@ -121,14 +136,14 @@ class RefactoringTable {
 }
 
 class ProfilerRun {
-    constructor({ vm, maxRecordedTime, warmUpTime, projectId, initialReport, resultDiv, targetInvariantChecks }) {
+    constructor({ vm, maxRecordedTime, warmUpTime, projectId, initialReport, resultDiv, targetInvariantChecks, coverageInfo }) {
         this.vm = vm;
         this.maxRecordedTime = maxRecordedTime;
         this.warmUpTime = warmUpTime;
         this.projectId = projectId;
         //todo remove because we just going to use some prefix to check
         this.targetInvariantChecks = targetInvariantChecks;
-
+        
         this.report = {};
 
         vm.runtime.enableProfiling();
@@ -142,7 +157,7 @@ class ProfilerRun {
             maxRecordedTime
         });
 
-        const stats = this.stats = new Refactorings(profiler, initialReport);
+        const stats = this.stats = new Refactorings(profiler, initialReport, coverageInfo);
         this.resultTable = new RefactoringTable({
             containerDom: resultDiv,
             profiler,
@@ -188,12 +203,6 @@ class ProfilerRun {
             var stopOnTimeLimit = setTimeout(() => {
                 this.stopProfileRun();
                 clearInterval(checkCompletion);
-//                 let failures = Object.keys(this.profiler.blockIdRecords).filter(k => k.startsWith("_assertion_failed"));
-//                 if (failures.length > 0) {
-//                     this.report.success = false;
-//                 }
-//                 //TODO: Scratch.vm.runtime.getTargetForStage().lookupVariableById(vid).value
-//                 this.vm.runtime.profiler = null;
                 resolve();
             }, 100 + this.warmUpTime + this.maxRecordedTime);
 
@@ -312,7 +321,6 @@ const renderRefactorableList = function(refactorables, json){
     var refactorableData = json['improvables'];
     let refactorableKV = Scratch.refactorableKV = {};
 
-    //TODO sort which to show first (refactorable transform >0 then smell)
     let sortedRefactorables = refactorableData.sort((ref1,ref2)=>ref2.transforms.length-ref1.transforms.length);
     refactorableData = sortedRefactorables;
 
