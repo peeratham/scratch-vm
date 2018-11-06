@@ -42,25 +42,17 @@ const getLocalAssetUrl = function (asset) {
 };
 
 const loadProject = function (projectInputDom) {
-    let id = location.hash.substring(1).split(',')[0];
-    projectInputDom.value = id; //update to current id in hash
+    let id = null;
+    if(!location.hash.startsWith("#view")){
+        id = location.hash.substring(1).split(',')[0];
+        projectInputDom.value = id; //update to current id in hash    
+    }else{
+        id = projectInputDom.value;
+    }
+    
     Scratch.vm.downloadProjectId(id);
     return id;
 };
-
-/**
- * Render previously run benchmark data.
- * @param {object} json data from a previous benchmark run.
- */
-const renderBenchmarkData = function (json) {
-    const vm = new window.VirtualMachine();
-    new ProfilerRun({ vm }).render(json);
-    setShareLink(json);
-};
-
-
-
-
 
 //debugging utitlity
 const xmlButton = document.getElementById('getTargetXml');
@@ -143,4 +135,6 @@ function fromXml() {
     taChange();
 }
 
-
+function readVar(varName) {
+    console.log(Scratch.vm.runtime.getTargetForStage().variables[varName].value);
+}

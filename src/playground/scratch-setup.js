@@ -7,18 +7,22 @@ window.onload = function () {
         const data = location.hash.substring(6);
         const frozen = atob(data);
         const json = JSON.parse(frozen);
-        renderBenchmarkData(json);
+        const { fixture } = json;
+        document.querySelector('[type=text]').value = fixture.projectId;
+    } else if (location.hash.startsWith("#")) {
+        const split = location.hash.substring(1).split(',');
+        document.querySelector('[type=text]').value = split[0];
     } else {
-        setupScratch();
-        
+        throw new Exception("Unknown data format after #");
     }
+    setupScratch();
 };
 
 window.onhashchange = function () {
     location.reload();
 };
 
-const setupScratch = function(){
+const setupScratch = function () {
     const vm = new window.VirtualMachine();
     Scratch.vm = vm;
 
@@ -64,32 +68,32 @@ const setupScratch = function(){
         }
     });
     Scratch.workspace = workspace;
-    
+
     //connect workspace to vm
     Scratch.workspace.addChangeListener(Scratch.vm.blockListener);
     Scratch.workspace.addChangeListener(Scratch.vm.variableListener);
     const flyoutWorkspace = Scratch.workspace.getFlyout().getWorkspace();
     flyoutWorkspace.addChangeListener(Scratch.vm.flyoutBlockListener);
     flyoutWorkspace.addChangeListener(Scratch.vm.monitorBlockListener);
-    
+
     Scratch.vm.setTurboMode(false);  //turbo
-    
+
     const storage = new ScratchStorage(); /* global ScratchStorage */
     const AssetType = storage.AssetType;
-    
+
     storage.addWebSource([AssetType.Project], getLocalProjectUrl);
     storage.addWebSource([AssetType.ImageVector, AssetType.ImageBitmap, AssetType.Sound], getLocalAssetUrl);
     Scratch.vm.attachStorage(storage);
-    
+
     new LoadingProgress(progress => {
         document.getElementsByClassName('loading-total')[0]
             .innerText = progress.total;
         document.getElementsByClassName('loading-complete')[0]
             .innerText = progress.complete;
     }).on(storage);
-    
-    
-    
+
+
+
     if (location.hash) {
         const split = location.hash.substring(1).split(',');
         if (split[1] && split[1].length > 0) {
@@ -97,18 +101,18 @@ const setupScratch = function(){
         }
         maxRecordedTime = Number(split[2] || '0') || 6000;
     }
-    
-    
+
+
     const resultDiv = document.getElementById('profile-refactoring-result');
     resultDiv.innerHTML = "<table border='0'></table>"
-    
+
     const projectId = Project.ID = loadProject(projectInput);
-    
-    
+
+
     Scratch.vm.on('workspaceReady', data => {
-//         let evaluator = new RefactoringEvaluator(projectId, data, manualMode, resultDiv);
-//         evaluator.runAll();
-    
+        //         let evaluator = new RefactoringEvaluator(projectId, data, manualMode, resultDiv);
+        //         evaluator.runAll();
+
     });
 
     Scratch.vm.on('targetsUpdate', data => {
@@ -137,11 +141,11 @@ const setupScratch = function(){
         // Restore previously displayed text.
         var text = sessionStorage.getItem('textarea');
         if (text) {
-          document.getElementById('importExport').value = text;
+            document.getElementById('importExport').value = text;
         }
         taChange();
-    }    
-    
+    }
+
     // Instantiate the renderer and connect it to the VM.
     const canvas = document.getElementById('scratch-stage');
     const renderer = new window.ScratchRender(canvas);
@@ -152,7 +156,7 @@ const setupScratch = function(){
     /* global ScratchSVGRenderer */
     vm.attachV2SVGAdapter(new ScratchSVGRenderer.SVGRenderer());
     vm.attachV2BitmapAdapter(new ScratchSVGRenderer.BitmapAdapter());
-    
+
     // Feed mouse events as VM I/O events.
     document.addEventListener('mousemove', e => {
         const rect = canvas.getBoundingClientRect();
@@ -188,12 +192,12 @@ const setupScratch = function(){
         Scratch.vm.postIOData('mouse', data);
         e.preventDefault();
     });
-    
+
     // Feed keyboard events as VM I/O events.
     document.addEventListener('keydown', e => {
         // Don't capture keys intended for Blockly inputs.
         if (e.target !== document && e.target !== document.body) return;
-    
+
         Scratch.vm.postIOData('keyboard', {
             keyCode: e.keyCode,
             key: e.key,
@@ -208,13 +212,13 @@ const setupScratch = function(){
             key: e.key,
             isDown: false
         });
-    
+
         // E.g., prevent scroll.
         if (e.target !== document && e.target !== document.body) {
             e.preventDefault();
         }
     });
-    
+
     // Run threads
     vm.start();
 }

@@ -135,10 +135,11 @@ const BENCH_STATUS = {
 };
 
 class BenchResult {
-    constructor({ fixture, status = BENCH_STATUS.INACTIVE, projectReport = null }) {
+    constructor({ fixture, status = BENCH_STATUS.INACTIVE, projectReport = null, project_id }) {
         this.fixture = fixture;
         this.status = status;
         this.projectReport = projectReport;
+        this.projectId = project_id;
     }
 }
 
@@ -167,6 +168,9 @@ class BenchFixture extends Emitter {
                     status: BENCH_STATUS.STARTING,
                     projectReport: null
                 };
+                //override the project id when manually invoke    
+                result.project_id = message.project_id;
+
                 if (message.type === BENCH_MESSAGE_TYPE.INACTIVE) {
                     result.status = BENCH_STATUS.RESUME;
                 } else if (message.type === BENCH_MESSAGE_TYPE.LOADING) {
@@ -181,6 +185,7 @@ class BenchFixture extends Emitter {
                     resolve(new BenchResult(result));
                     util.benchStream.off('message', null, this);
                 }
+
                 this.emit('result', new BenchResult(result));
             }, this);
             util.startBench(this);
@@ -309,21 +314,19 @@ class BenchResultView {
     }
 
     render(newResult = this.result, compareResult = this.compare) {
+        console.log(newResult.projectReport);
         const statusName = viewNames[newResult.status];
 
         this.dom.className = `result-view ${
             viewNames[newResult.status].toLowerCase()
             }`;
         this.dom.onclick = this.act.bind(this);
-        let url = `index.html#${benchmarkUrlArgs(newResult.fixture)}`;
-        if (newResult.status === BENCH_STATUS.COMPLETE) {
-            url = `index.html#view/${btoa(JSON.stringify(newResult))}`;
-        }
+        let url = `index.html#${newResult.projectId ? newResult.projectId : newResult.fixture.projectId}`;
 
         this.dom.innerHTML = `
             <div class="fixture-project">
                 <a href="${url}" target="bench_frame"
-                    >${newResult.fixture.projectId}</a>
+                    >${newResult.projectId ? newResult.projectId : newResult.fixture.projectId}</a>
             </div>
             <div class="result-status">
                 <div>${statusName}</div>
@@ -349,14 +352,19 @@ class BenchSuiteResultView {
         this.dom = document.createElement('div');
 
         for (const fixture of suite.fixtures) {
-            this.views[fixture.id] = new BenchResultView({
+            this.views[fixture.projectId] = new BenchResultView({
                 result: new BenchResult({ fixture }),
                 benchUtil: util
             });
         }
 
         suite.on('result', result => {
-            this.views[result.fixture.id].update(result);
+            if (result.projectId) {
+                this.views[result.projectId].update(result);
+            } else {
+                this.views[result.fixture.projectId].update(result);
+            }
+
         });
     }
 
@@ -391,7 +399,7 @@ class BenchSuiteResultView {
         </div>`;
 
         for (const fixture of this.suite.fixtures) {
-            this.dom.appendChild(this.views[fixture.id].render().dom);
+            this.dom.appendChild(this.views[fixture.projectId].render().dom);
         }
 
 
@@ -401,6 +409,8 @@ class BenchSuiteResultView {
 
 let suite;
 let suiteView;
+
+let refactoringResults = {};
 
 window.upload = function (_this) {
     if (!_this.files.length) {
@@ -451,8 +461,6 @@ window.download = function (_this) {
 };
 
 window.aggregate = function (_this) {
-    
-
 
 }
 
@@ -479,20 +487,20 @@ window.onload = function () {
     //     recordingTime: 2000
     // }));
     let OKprojects = [
-        
+
     ];
 
     let test_projects = [
-    //     "SS_Scratch_Project_10",
-    //     "SS_Scratch_Project_18",
-    //    "SS_Scratch_Project_8",
-    //     "Scratch_Project_5",
-    //     "Scratch_Project_12",
-    //     "SS_Scratch_Project_14",
-    //     "SS_Scratch_Project_15",
-    //     "SS_Scratch_Project_16",
-    //     "SS_Scratch_Project_17",
-    //     "SS_Scratch_Project_9"
+        //     "SS_Scratch_Project_10",
+        //     "SS_Scratch_Project_18",
+        //    "SS_Scratch_Project_8",
+        //     "Scratch_Project_5",
+        //     "Scratch_Project_12",
+        //     "SS_Scratch_Project_14",
+        //     "SS_Scratch_Project_15",
+        //     "SS_Scratch_Project_16",
+        //     "SS_Scratch_Project_17",
+        //     "SS_Scratch_Project_9"
     ];
 
     let expr_clone_dataset = [
@@ -546,46 +554,18 @@ window.onload = function () {
     ]
 
     let extrvar_inspect_data = ['big-popular-art-207536546', 'expr-clone-235504161', 'ScratchProject6', 'ScratchProject7', 'big-popular-tutorials-243216409', 'expr-clone-237198187', 'expr-clone-247339697', 'expr-clone-246336982', 'expr-clone-251386278', 'ScratchProject4', 'expr-clone-252206906', 'ScratchProject1'];
-    let test_data = ['empty','test_blocking','test-coverage'];
+    let test_data = ['bug-exprclone-01', 'safe-exprclone-01'
+        // 'test_blocking','empty','test-coverage'
+    ];
 
-    for (const proj of extrvar_inspect_data) {
+    for (const proj of test_data) {
         suite.add(new BenchFixture({
             projectId: proj,
             warmUpTime: 0,
             recordingTime: 15000
         }));
     }
-    
-    // suite.add(new BenchFixture({
-    //     projectId: 247520139,
-    //     warmUpTime: 1000,
-    //     recordingTime: 3000
-    // }));
 
-    // suite.add(new BenchFixture({
-    //     projectId: 247507535,
-    //     warmUpTime: 1000,
-    //     recordingTime: 3000
-    // }));
-
-
-
-
-
-
-    // TODO: #1322
-    // Error: Cannot create monitor for target that cannot be found by name
-    // suite.add(new BenchFixture({
-    //     projectId: 187694931,
-    //     warmUpTime: 0,
-    //     recordingTime: 5000
-    // }));
-    //
-    // suite.add(new BenchFixture({
-    //     projectId: 187694931,
-    //     warmUpTime: 5000,
-    //     recordingTime: 5000
-    // }));
 
     const standard = projectId => {
         suite.add(new BenchFixture({
@@ -596,17 +576,29 @@ window.onload = function () {
     };
 
 
-
-    // standard(219313833); // sensing_touching benchmark
-    // standard(236115215); // touching color benchmark
-    // standard(238750909); // bob ross painting (heavy pen stamp)
-
     const frame = document.getElementsByTagName('iframe')[0];
     const runner = new BenchRunner({ frame, suite });
     const resultsView = suiteView = new BenchSuiteResultView({ runner }).render();
 
     document.getElementsByClassName('suite-results')[0]
         .appendChild(resultsView.dom);
+
+
+    window.addEventListener('message', message => {
+        if (message.data) {
+            const result = {};
+            //when manually invoke    
+            result.project_id = message.data.project_id;
+            result.projectReport = message.data.projectReport;
+            console.log(result);
+
+            //todo update the bench result
+            if (message.data.projectReport) {
+                resultsView.views[result.project_id].result.projectReport = result.projectReport;
+                resultsView.views[result.project_id].render()
+            }
+        }
+    });
 
     runner.run();
 };

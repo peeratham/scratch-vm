@@ -1,7 +1,7 @@
 const projectInput = document.querySelector('input');
 
 const manualMode = true;
-let warmUpTime = 2000;
+let warmUpTime = 0;
 let maxRecordedTime = 100*1000;
 const WORK_TIME = 0.75;
 const invariantCheckNumStmt = 1; //the counter which may not be encountered if behavior is safe
@@ -45,6 +45,7 @@ profileButton.addEventListener("click", async function(){
         projectReport["improvables"].push(initialReport);
         window.parent.postMessage({
             type: 'BENCH_MESSAGE_COMPLETE',
+            project_id: Project.ID,
             projectReport: projectReport
         }, '*');    
     }
@@ -71,7 +72,6 @@ class Refactorings {
         this.executedBlockIds = null;
         this.stats = new IdStatView(report);
         this.numBlocksCovered = 0;
-        this.totalReachableStmt = 21;
         this.completed = 0;
         //TODO: totolReachableStmt
         this.coverageInfo = coverageInfo;
@@ -84,7 +84,6 @@ class Refactorings {
     update() {
         this.ids = Object.keys(this.blockIdRecords);
         if(this.ids.length!=this.numBlocksCovered){
-            console.log(this.blockIdRecords);
             this.numBlocksCovered = this.ids.length;
             this.completed = this.numBlocksCovered/(this.coverageInfo.numBlocks-invariantCheckNumStmt);
             console.log((this.completed*100)+"%");
@@ -178,13 +177,15 @@ class ProfilerRun {
         
         setTimeout(() => {
             window.parent.postMessage({
-                type: 'BENCH_MESSAGE_WARMING_UP'
+                type: 'BENCH_MESSAGE_WARMING_UP',
+                project_id: this.projectId 
             }, '*');
             this.vm.greenFlag();
         }, 100);
         setTimeout(() => {
             window.parent.postMessage({
-                type: 'BENCH_MESSAGE_ACTIVE'
+                type: 'BENCH_MESSAGE_ACTIVE',
+                project_id: this.projectId 
             }, '*');
             this.vm.runtime.profiler = this.profiler;
         }, 100 + this.warmUpTime);
@@ -220,17 +221,9 @@ class ProfilerRun {
 
     render(json) {
         const { fixture } = json;
-        document.querySelector('[type=text]').value = [
-            fixture.projectId,
-            fixture.warmUpTime,
-            fixture.recordingTime
-        ].join(',');
-
+        document.querySelector('[type=text]').value = fixture.projectId; 
         this.refactorings.refactorings = {};
-
-        // Object.entries(json.refactorings).forEach(([key, data]) => {
         this.refactorings.refactorings = Object.assign(new IdStatView(), data);
-        // });
     }
 }
 
