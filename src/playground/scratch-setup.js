@@ -15,14 +15,19 @@ window.onload = function () {
     } else {
         throw new Exception("Unknown data format after #");
     }
-    setupScratch();
+    setupScratch(function(){
+        if(autoAnalyze){
+            autoAnalyzeButton.click();
+        }            
+    });
+    
 };
 
 window.onhashchange = function () {
     location.reload();
 };
 
-const setupScratch = function () {
+const setupScratch = async function (wsReadyCallback) {
     const vm = new window.VirtualMachine();
     Scratch.vm = vm;
 
@@ -110,9 +115,10 @@ const setupScratch = function () {
 
 
     Scratch.vm.on('workspaceReady', data => {
+        wsReadyCallback();
         //         let evaluator = new RefactoringEvaluator(projectId, data, manualMode, resultDiv);
         //         evaluator.runAll();
-
+        
     });
 
     Scratch.vm.on('targetsUpdate', data => {

@@ -135,7 +135,7 @@ const BENCH_STATUS = {
 };
 
 class BenchResult {
-    constructor({ fixture, status = BENCH_STATUS.INACTIVE, projectReport = null, project_id }) {
+    constructor({ fixture, status = BENCH_STATUS.INACTIVE, projectReport = {}, project_id }) {
         this.fixture = fixture;
         this.status = status;
         this.projectReport = projectReport;
@@ -166,7 +166,7 @@ class BenchFixture extends Emitter {
                 const result = {
                     fixture: this,
                     status: BENCH_STATUS.STARTING,
-                    projectReport: null
+                    projectReport: {}
                 };
                 //override the project id when manually invoke    
                 result.project_id = message.project_id;
@@ -359,11 +359,11 @@ class BenchSuiteResultView {
         }
 
         suite.on('result', result => {
-            if (result.projectId) {
-                this.views[result.projectId].update(result);
-            } else {
-                this.views[result.fixture.projectId].update(result);
-            }
+//             if (result.projectId) {
+//                 this.views[result.projectId].update(result);
+//             } else {
+//                 this.views[result.fixture.projectId].update(result);
+//             }
 
         });
     }
@@ -516,7 +516,7 @@ window.onload = function () {
         // "expr-clone-200533899",
         // "expr-clone-202510579"
     ]
-
+    
     let dataset = [
         // "small-average-art-252493776",
         // "small-average-games-239818687",
@@ -554,8 +554,9 @@ window.onload = function () {
     ]
 
     let extrvar_inspect_data = ['big-popular-art-207536546', 'expr-clone-235504161', 'ScratchProject6', 'ScratchProject7', 'big-popular-tutorials-243216409', 'expr-clone-237198187', 'expr-clone-247339697', 'expr-clone-246336982', 'expr-clone-251386278', 'ScratchProject4', 'expr-clone-252206906', 'ScratchProject1'];
-    let test_data = ['bug-exprclone-01', 'safe-exprclone-01'
-        // 'test_blocking','empty','test-coverage'
+    let test_data = ['big-popular-tutorials-243216409', 'bug-exprclone-01', 'safe-exprclone-01'
+        // 'test_blocking',
+        // ,'empty','test-coverage'
     ];
 
     for (const proj of test_data) {
@@ -583,21 +584,29 @@ window.onload = function () {
     document.getElementsByClassName('suite-results')[0]
         .appendChild(resultsView.dom);
 
-
     window.addEventListener('message', message => {
-        if (message.data) {
-            const result = {};
-            //when manually invoke    
-            result.project_id = message.data.project_id;
-            result.projectReport = message.data.projectReport;
-            console.log(result);
+        const {project_id, type, projectMetrics, refactorable} = message.data;
 
-            //todo update the bench result
-            if (message.data.projectReport) {
-                resultsView.views[result.project_id].result.projectReport = result.projectReport;
-                resultsView.views[result.project_id].render()
+        //when manually invoke    
+        const projectReport = resultsView.views[project_id].result.projectReport;
+        if(type === 'PROJECT_METRIC'){
+            projectReport['project_metrics'] = projectMetrics;
+        }
+
+        if(type === 'INVARIANT_CHECK'){
+            projectReport['refactorable'] = projectReport['refactorable'] || {};
+            //todo update the bench result (refactorable)
+            if (refactorable) {
+                projectReport.refactorable[refactorable['refactorable_id']] = refactorable;
             }
         }
+
+        if(type ==='BENCH_MESSAGE_COMPLETE'){
+            resultsView.views[project_id].result.status = BENCH_STATUS.COMPLETE;
+        }
+
+        resultsView.views[project_id].render();
+        
     });
 
     runner.run();
