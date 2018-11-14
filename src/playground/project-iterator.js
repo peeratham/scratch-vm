@@ -1,65 +1,65 @@
-
-const frame = document.getElementsByTagName('iframe')[0];
-
-let dom = document.createElement('div');
-document.getElementsByClassName('suite-results')[0].appendChild(dom);
-
-const sleep = m => new Promise(r => setTimeout(r, m));
-
-function summaryText(total,incomplete){
-    const divEl = document.createElement('div');
-    divEl.innerText = `Total: ${total}, Incomplete: ${incomplete}`;
-    return divEl;
-}
-
-const limitPerPage = 1;
-const getProjects = async function () {
-    const projects = await fetch("http://localhost:3000/projects").then(resp => resp.json());
-    const incompleteProjects = [];
-
-
-    let projectIdx = 0;
-    do {
-        let p = projects[projectIdx];
-        const projectDataInfo = await fetch(`http://localhost:3000/data/${p._id}`).then(resp=>resp.json());
-        const textHeader = document.createElement('div');
-        if(!projectDataInfo['project_dir_exists']){
-            textHeader.innerText = p._id + " : incomplete";
-            incompleteProjects.push(p);
-        }else{
-            textHeader.innerText = p._id + " : complete";
+var app = angular.module('myApp', []);
+app.controller('analysisTaskController', async function ($scope, $http) {
+    $scope.projects = {};
+    $scope.projectDataStatuses = {};
+    $scope.tasks = {
+        data: true,
+        coverage: false
+    };
+    $scope.getStatus = function (id) {
+        if ($scope.projectDataStatuses[id]) {
+            return $scope.projectDataStatuses[id]['project_dir_exists'] === true ? "found" : "missing";
         }
-        dom.appendChild(textHeader);
+        return "";
+    }
 
-        projectIdx++;
-    } while (projectIdx < projects.length);
+    const getMissing = () => projects.filter(p => projectDataStatuses[p._id]['project_dir_exists'] === false).map(p => p._id);
 
-    dom.prepend(summaryText(projects.length,incompleteProjects.length));
+    $scope.updateStatus = function (id) {
+        $http({
+            method: "GET",
+            url: `http://localhost:3000/data/${id}`
+        }).then(resp => $scope.projectDataStatuses[id] = resp.data)
+        .then(()=>{
+            $scope.missingCount = getMissing().length;
+        });
+    }
 
-    window.addEventListener("message", function (message) {
-        const { project_id, type } = message.data;
-        
-        if (type === "NEXT"||type==="START") {
-            if(type==="NEXT"){console.log("Done: "+project_id)};
-            if (incompleteProjects.length > 0) {
-                let nextProject = incompleteProjects.shift();
-                frame.contentWindow.location.assign(`executor.html#${nextProject._id}`);
-            }
-        }
-    });
+    let projects = $scope.projects = await $http({
+        method: "GET",
+        url: "http://localhost:3000/projects"
+    }).then(resp => resp.data);
+
+    let projectDataStatuses = $scope.projectDataStatuses = (await Promise.all(projects.map(p =>
+        $http({
+            method: "GET",
+            url: `http://localhost:3000/data/${p._id}`
+        })
+    )).then(statuses => statuses.map(st => st.data)))
+        .reduce((obj, item) => { obj[item._id] = item; return obj; }, {});
+
+    let incompleteProjectIds = projects.filter(p => projectDataStatuses[p._id]['project_dir_exists'] === false).map(p => p._id);
+    $scope.missingCount = getMissing().length;
+    $scope.$apply();
 
     //start!
     window.parent.postMessage({
         type: 'START'
     }, '*');
 
-}
-
-window.onload = function () {
-    getProjects();
-}
-
-
-
-
-
+    const frame = document.getElementsByTagName('iframe')[0];
+    window.addEventListener("message", function (message) {
+        const { project_id, type } = message.data;
+    
+        if (type === "NEXT" || type === "START") {
+            if (type === "NEXT") {
+                $scope.updateStatus(project_id);
+                $scope.$apply();
+            };
+            if (incompleteProjectIds.length > 0) {
+                let nextProjectId = incompleteProjectIds.shift();
+                frame.contentWindow.location.assign(`executor-download.html#${nextProjectId}`);
+            }
+        }
+    });
+});

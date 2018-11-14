@@ -1,16 +1,23 @@
 <!doctype html>
 
 <html lang="en">
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
 <head>
     <meta charset="utf-8">
     <title>Scratch Project Runner</title>
     <link rel="stylesheet" href="./suite.css" type="text/css" media="screen">
+    
 </head>
 <body>
     <div class="runner-controls">
         <h2>Project Data</h2>
-        <div class="suite-results">
-
+        <div ng-app="myApp" ng-controller="analysisTaskController" class="ng-cloak" id="#myApp">
+            <form name="tasks">
+                <label>Data:<input type="checkbox" ng-model="tasks.data" ng-init="tasks.data=false"></label>
+                <label>Coverage:<input type="checkbox" ng-model="tasks.coverage" ng-init="tasks.coverage=true"></label>
+            </form>
+            <div>Total: {{projects.length}}, Missing: {{missingCount}}</div>
+            <div ng-repeat="p in projects">{{p._id}} : {{getStatus(p._id)}}</div>      
         </div>
     </div>
 
@@ -19,7 +26,6 @@
             width="100%" height="100%"></iframe>
     </div>
     <script src="./scratch-vm.js"></script>
-    <script src="./emitter.js" type="text/javascript" charset="utf-8"></script>
     <script src="./project-iterator.js" type="text/javascript" charset="utf-8"></script>
 </body>
 </html>
