@@ -427,7 +427,7 @@ const setupInvariantChecks = function(setupObj,invChecks){
     })();
 }
 
-const sleep = m => new Promise(r => setTimeout(r, m));
+
 
 
 const autoAnalyzeProject = async function(){
