@@ -99,7 +99,7 @@ class BenchUtil {
 
     startBench(args) {
         this.benchArgs = args;
-        this.setFrameLocation(`index.html#${benchmarkUrlArgs(args)}`);
+        this.setFrameLocation(`modified-benchmark.html#${benchmarkUrlArgs(args)}`);
     }
 
     pauseBench() {
