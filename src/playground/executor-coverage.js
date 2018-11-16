@@ -22,10 +22,17 @@ const saveAnalysisInfo = async function (projectId) {
     return response;
 };
 
+const setupProfiler = async function(){
+    let profilerRun = Scratch.ProfileRun = new ProfilerRun({ vm: Scratch.vm, warmUpTime:0, maxRecordedTime:5000, projectId: Project.ID, initialReport:{}, coverageInfo:{}});
+    await profilerRun.runProfiler();
+    
+}
+
 const createCoverageTask = function(projectId, callback){
     return async function(){
-        await saveAnalysisInfo(projectId);
-        setTimeout(callback(), 2000);
+        await setupProfiler();    
+        // await saveAnalysisInfo(projectId);
+        // setTimeout(callback(), 2000);
     }
 }
 
