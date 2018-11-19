@@ -21,11 +21,14 @@ const getProgramXml = function () {
 const ASSET_SERVER = 'https://cdn.assets.scratch.mit.edu/';
 const PROJECT_SERVER = 'https://cdn.projects.scratch.mit.edu/';
 
+var getProjectUrl;
+var getAssetUrl;
+
 /**
  * @param {Asset} asset - calculate a URL for this asset.
  * @returns {string} a URL to download a project file.
  */
-const getProjectUrl = function (asset) {
+const getOfficialProjectUrl = function (asset) {
     const assetIdParts = asset.assetId.split('.');
     const assetUrlParts = [PROJECT_SERVER, 'internalapi/project/', assetIdParts[0], '/get/'];
     if (assetIdParts[1]) {
@@ -38,7 +41,7 @@ const getProjectUrl = function (asset) {
  * @param {Asset} asset - calculate a URL for this asset.
  * @returns {string} a URL to download a project asset (PNG, WAV, etc.)
  */
-const getAssetUrl = function (asset) {
+const getOfficialAssetUrl = function (asset) {
     const assetUrlParts = [
         ASSET_SERVER,
         'internalapi/asset/',
@@ -85,3 +88,11 @@ const loadProject = function (projectInputDom) {
     Scratch.vm.downloadProjectId(id);
     return id;
 };
+
+if(LOCAL_ASSET){
+    getProjectUrl = getLocalProjectUrl;
+    getAssetUrl = getLocalAssetUrl;
+}else{
+    getProjectUrl = getOfficialProjectUrl;
+    getAssetUrl = getOfficialAssetUrl;
+}
