@@ -1,8 +1,3 @@
-const BASE_PROJECT_SERVER_URL = "http://localhost:3000";
-const DATA_SERVICE_URL = BASE_PROJECT_SERVER_URL + "/data";
-const PROJECT_SERVICE_URL = BASE_PROJECT_SERVER_URL + "/projects";
-const ANALYSIS_INFO_SERVICE_URL = BASE_PROJECT_SERVER_URL + "/analysis-infos";
-
 var app = angular.module('myApp', []);
 
 app.controller('analysisTaskController', async function ($scope, $http) {
@@ -22,7 +17,7 @@ app.controller('analysisTaskController', async function ($scope, $http) {
     $scope.updateAnalysisInfo = async function (id) {
         await $http({
             method: "GET",
-            url: `${ANALYSIS_INFO_SERVICE_URL}/${id}`
+            url: `${COVERAGE_INFO_SERVICE_URL}/${id}`
         })
             .then(resp => $scope.analysisInfos[id] = resp.data)
             .then(() => {
@@ -46,11 +41,14 @@ app.controller('analysisTaskController', async function ($scope, $http) {
             });
     }
 
+    let projects;
+    // projects = $scope.projects = await $http({
+    //     method: "GET",
+    //     url: PROJECT_SERVICE_URL
+    // }).then(resp => resp.data);
 
-    let projects = $scope.projects = await $http({
-        method: "GET",
-        url: PROJECT_SERVICE_URL
-    }).then(resp => resp.data);
+    //test
+    projects =$scope.projects = [{_id: '254317821'}];
 
     const getId2Entries = async function (projects, remoteServiceURL) {
         return (await Promise.all(projects.map(p =>
@@ -67,7 +65,7 @@ app.controller('analysisTaskController', async function ($scope, $http) {
     };
     // retrieving remote data
     let projectDataStatuses = $scope.projectDataStatuses = await getId2Entries(projects, DATA_SERVICE_URL);
-    let analysisInfos = $scope.analysisInfos = await getId2Entries(projects, ANALYSIS_INFO_SERVICE_URL);
+    let analysisInfos = $scope.analysisInfos = await getId2Entries(projects, COVERAGE_INFO_SERVICE_URL);
 
 
     const getRemainingIdsForDataTask = () => projects.filter(p => projectDataStatuses[p._id]['project_dir_exists'] === false).map(p => p._id);
