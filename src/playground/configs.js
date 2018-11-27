@@ -10,5 +10,3 @@ const PROJECT_SERVER = 'https://cdn.projects.scratch.mit.edu/';
 
 const LOCAL_ASSET_SERVER = 'http://localhost:3000/';
 const LOCAL_PROJECT_SERVER = 'http://localhost:3000/';
-
-const LOCAL_ASSET = true;

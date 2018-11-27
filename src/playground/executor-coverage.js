@@ -17,7 +17,6 @@ const saveAnalysisInfo = async function (info) {
 };
 
 const getEstimatedCoverage = async function (analysisServerUrl, xml){
-    console.log('todo: send analysis request to server to get estimated upperbound of reachable statements');
     const result = await fetch(analysisServerUrl, {
         method: "POST",
         mode: "cors",
@@ -52,6 +51,7 @@ const createCoverageTask = function(projectId, callback){
         let estimatedCoverageInfo = await getEstimatedCoverage(`${COVERAGE_ANALYSIS_SERVICE_URL}/${projectId}`, projectXml);
         console.log('todo: run profiler to get analysis info');
         let result = await setupAndRunProfiler(estimatedCoverageInfo);
+        console.log("comment/uncomment :save analysis info after local asset works");
         await saveAnalysisInfo(result);
         setTimeout(callback(), 2000);
     }
@@ -60,6 +60,7 @@ const createCoverageTask = function(projectId, callback){
 window.onload = function(){
     const projectIdDom = document.getElementById("projectId");
     let projectId = projectIdDom.innerText = location.hash.substring(1,location.hash.length);
+    configureProjectResourceUrl({LOCAL_ASSET:true});
     loadProjectAndRunTask(
         projectId,
         createCoverageTask(projectId, function () { updateStatus(projectId, 'COVERAGE', 'COMPLETE') }));

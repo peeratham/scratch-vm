@@ -87,10 +87,16 @@ const loadProject = function (projectInputDom) {
     return id;
 };
 
-if(LOCAL_ASSET){
-    getProjectUrl = getLocalProjectUrl;
-    getAssetUrl = getLocalAssetUrl;
-}else{
-    getProjectUrl = getOfficialProjectUrl;
-    getAssetUrl = getOfficialAssetUrl;
-}
+
+const configureProjectResourceUrl = function({LOCAL_ASSET}){
+    if(LOCAL_ASSET===undefined){
+        throw new Exception("Resource flag unspecified");
+    }
+    if(LOCAL_ASSET===true){
+        getProjectUrl = getLocalProjectUrl;
+        getAssetUrl = getLocalAssetUrl;
+    }else{
+        getProjectUrl = getOfficialProjectUrl;
+        getAssetUrl = getOfficialAssetUrl;
+    }
+};
