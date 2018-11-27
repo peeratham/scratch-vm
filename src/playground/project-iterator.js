@@ -21,7 +21,7 @@ app.controller('analysisTaskController', async function ($scope, $http) {
         })
             .then(resp => $scope.analysisInfos[id] = resp.data)
             .then(() => {
-                $scope.remainingTasks.coverage = getRemainingIdsForCoverageTask().length;
+                $scope.remainingTasks.coverage = filterIdsForAnalysisTask({analysisName:'coverage'}).length;
             });
     }
 
@@ -65,15 +65,37 @@ app.controller('analysisTaskController', async function ($scope, $http) {
     };
     // retrieving remote data
     let projectDataStatuses = $scope.projectDataStatuses = await getId2Entries(projects, DATA_SERVICE_URL);
-    let analysisInfos = $scope.analysisInfos = await getId2Entries(projects, COVERAGE_INFO_SERVICE_URL);
+    
+    let analysisInfos = {
+        coverage : $scope.analysisInfos = await getId2Entries(projects, COVERAGE_INFO_SERVICE_URL)
+    };
 
 
-    const getRemainingIdsForDataTask = () => projects.filter(p => projectDataStatuses[p._id]['project_dir_exists'] === false).map(p => p._id);
-    const getRemainingIdsForCoverageTask = () => projects.filter(p => analysisInfos[p._id] === undefined || analysisInfos[p._id]['green_flag_coverage'] === undefined).map(p => p._id);
+    const getRemainingIdsForDataTask = () => projects.filter(p => projectDataStatuses[p._id]['project_dir_exists'] === false).map(p => p._id);    
+
+    const filterIdsForAnalysisTask = ({analysisName, reanalyzeAll=false}) => {
+        if(reanalyzeAll === true){
+            return projects.map(p => p.id);
+        }
+
+        if(analysisName==='coverage'){
+            return projects.filter(p => analysisInfos.coverage[p._id] === undefined || analysisInfos.coverage[p._id]['info']['green_flag_coverage'] === undefined).map(p => p._id);
+        }
+        else if(analysisName==='dupexpr'){
+            console.log("TODO: locally filter analysisInfo[id] === undefined"); //show be renamed to filter remaining ids
+            return ['254317821'];
+        }
+        else {
+            throw new Exception("Unknown analysis: "+analysisName);
+        }
+    };
+
+
     $scope.remainingTasks = {
         data: getRemainingIdsForDataTask().length,
-        coverage: getRemainingIdsForCoverageTask().length
+        coverage: filterIdsForAnalysisTask({analysisName:'coverage'}).length
     };
+
 
     $scope.$apply();
 
@@ -93,23 +115,41 @@ app.controller('analysisTaskController', async function ($scope, $http) {
                     frame.contentWindow.location.assign(`executor-data.html#${nextProjectId}`);
                 } else {
                     //coverage next
-                    let nextProjectId = getRemainingIdsForCoverageTask()[0];
+                    let nextProjectId = filterIdsForAnalysisTask({analysisName:'coverage'})[0];
                     frame.contentWindow.location.assign(`executor-coverage.html#${nextProjectId}`);
                 }
             }
         }
 
         if (task === 'COVERAGE') {
-            if (status === "START" && getRemainingIdsForCoverageTask().length > 0) {
-                let nextProjectId = getRemainingIdsForCoverageTask()[0];
+            let remaining = filterIdsForAnalysisTask({analysisName:'coverage'});
+            if (status === "START" && remaining.length > 0) {
+                let nextProjectId = remaining[0];
                 frame.contentWindow.location.assign(`executor-coverage.html#${nextProjectId}`);
             } else if (status === "COMPLETE") {
                 await $scope.updateAnalysisInfo(project_id);
                 $scope.$apply();
                 if ($scope.remainingTasks.coverage > 0) {
-                    let nextProjectId = getRemainingIdsForCoverageTask()[0];
+                    let nextProjectId = remaining[0];
                     frame.contentWindow.location.assign(`executor-coverage.html#${nextProjectId}`);
                 }
+            }
+        }
+
+        if (task === 'DUPEXPR') {
+            let remaining = getRemainingIdsForAnalysisTask({analysisName: 'DUPEXPR', reanalyzeAll: false});
+            if (status === "START" && remaining.length > 0){
+                let nextProjectId = remaining[0];
+                frame.contentWindow.location.assign(`executor-dupexpr.html#${nextProjectId}`);
+            } else if (status === "COMPLETE") {
+                this.console.log('TODO: await $scope.updateAnalysisInfo(analysisName, project_id);'); //first change coverage task to updateCoverageInfo
+                /**
+                 * $scope.$apply();
+                 * if ($scope.remainingTasks.dupexpr > 0) {
+                    let nextProjectId = remaining[0];
+                    frame.contentWindow.location.assign(`executor-dupexpr.html#${nextProjectId}`);
+                }
+                 */
             }
         }
     });
@@ -120,7 +160,7 @@ app.controller('analysisTaskController', async function ($scope, $http) {
             task: 'DATA',
             status: 'START'
         }, '*');
-    } else if (getRemainingIdsForCoverageTask().length > 0) {
+    } else if (filterIdsForAnalysisTask({analysisName:'coverage'}).length > 0) {
         window.parent.postMessage({
             task: 'COVERAGE',
             status: 'START'
