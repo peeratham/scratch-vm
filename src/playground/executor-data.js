@@ -38,7 +38,7 @@ const createUploadTask = function (projectId, callback) {
 window.onload = function () {
     const projectIdDom = document.getElementById("projectId");
     let projectId = projectIdDom.innerText = location.hash.substring(1, location.hash.length);
-    configureProjectResourceUrl({LOCAL_ASSET:true});
+    configureProjectResourceUrl({LOCAL_ASSET:false});
     loadProjectAndRunTask(
         projectId,
         createUploadTask(projectId, function () { updateStatus(projectId, 'DATA', 'COMPLETE') }));

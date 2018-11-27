@@ -9,6 +9,10 @@ const updateStatus = function (projectId, task, status) {
 };
 
 const loadProjectAndRunTask = function (projectInputId, wsReadyCallback) {
+    if(projectInputId===undefined){
+        throw new Exception("execution request for undefined project id");
+    }
+
     const vm = new window.VirtualMachine();
     Scratch.vm = vm;
     let firstTimeWorkspaceUpdate = true;
