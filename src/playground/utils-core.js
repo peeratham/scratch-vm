@@ -18,9 +18,6 @@ const getProgramXml = function () {
     return str;
 }
 
-const ASSET_SERVER = 'https://cdn.assets.scratch.mit.edu/';
-const PROJECT_SERVER = 'https://cdn.projects.scratch.mit.edu/';
-
 var getProjectUrl;
 var getAssetUrl;
 
@@ -54,11 +51,10 @@ const getOfficialAssetUrl = function (asset) {
 };
 
 
-const LOCAL_ASSET_SERVER = 'http://localhost:8000/';
-const LOCAL_PROJECT_SERVER = 'http://localhost:8000/';
+
 const getLocalProjectUrl = function (asset) {
     const assetIdParts = asset.assetId.split('.');
-    const assetUrlParts = [LOCAL_PROJECT_SERVER, assetIdParts[0] + '/', 'project.json'];
+    const assetUrlParts = [LOCAL_PROJECT_SERVER,'data/', assetIdParts[0] + '/src/', 'project.json'];
     if (assetIdParts[1]) {
         assetUrlParts.push(assetIdParts[1]);
     }
@@ -68,7 +64,9 @@ const getLocalProjectUrl = function (asset) {
 const getLocalAssetUrl = function (asset) {
     const assetUrlParts = [
         LOCAL_ASSET_SERVER,
-        location.hash.substring(1).split(",")[0] + '/',
+        ,'data/',
+        location.hash.substring(1).split(",")[0],
+        '/src/',
         asset.assetId,
         '.',
         asset.dataFormat
@@ -85,7 +83,7 @@ const loadProject = function (projectInputDom) {
         id = projectInputDom.value;
     }
     
-    Scratch.vm.downloadProjectId(id);
+    Scratch.vm.downloadProjectId(id); 
     return id;
 };
 

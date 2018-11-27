@@ -5,4 +5,10 @@ const ANALYSIS_INFO_SERVICE_URL = BASE_PROJECT_SERVER_URL + "/analysis-infos";
 const COVERAGE_INFO_SERVICE_URL = BASE_PROJECT_SERVER_URL + "/coverage-infos";
 const COVERAGE_ANALYSIS_SERVICE_URL = 'http://localhost:8080/analysis/coverage';
 
-const LOCAL_ASSET = false;
+const ASSET_SERVER = 'https://cdn.assets.scratch.mit.edu/';
+const PROJECT_SERVER = 'https://cdn.projects.scratch.mit.edu/';
+
+const LOCAL_ASSET_SERVER = 'http://localhost:3000/';
+const LOCAL_PROJECT_SERVER = 'http://localhost:3000/';
+
+const LOCAL_ASSET = true;
