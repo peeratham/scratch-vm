@@ -1,3 +1,18 @@
+const saveAnalysisInfo = async function ({info, analysis_data_endpoint_url}) {
+    const response = await fetch(analysis_data_endpoint_url, {
+        method: "POST",
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        mode: "cors",
+        cache: "no-cache",
+        body: JSON.stringify(info)
+    });
+    console.log(response);
+    return response;
+};
+
 
 const updateStatus = function (projectId, task, status) {
     // send message back readyForNext

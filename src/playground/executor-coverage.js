@@ -1,19 +1,10 @@
+/**
+ * COVERAGE ANALYSIS
+ */
+const analysis_data_endpoint_url = COVERAGE_INFO_SERVICE_URL;
+
 window.onhashchange = function () {
     location.reload();
-};
-const saveAnalysisInfo = async function (entry) {
-    const response = await fetch(COVERAGE_INFO_SERVICE_URL, {
-        method: "POST",
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
-        mode: "cors",
-        cache: "no-cache",
-        body: JSON.stringify(entry)
-    });
-    console.log(response);
-    return response;
 };
 
 const getEstimatedCoverage = async function (analysisServerUrl, xml){
@@ -27,7 +18,7 @@ const getEstimatedCoverage = async function (analysisServerUrl, xml){
 };
 
 const getProjectXml = async function(id){
-    let xml = await fetch(`${DATA_SERVICE_URL}/${id}/project.xml`).then(resp => resp.text());
+    let xml = await fetch(`${PROJECT_DATA_SERVICE_URL}/${id}/project.xml`).then(resp => resp.text());
     return xml;
 };
 
@@ -48,14 +39,14 @@ const setupAndRunProfiler = async function(coverageInfo){
     return result;
 };
 
+
 const createCoverageTask = function(projectId, callback){
     return async function(){
         let projectXml = await getProjectXml(projectId);
         let estimatedCoverageInfo = await getEstimatedCoverage(`${COVERAGE_ANALYSIS_SERVICE_URL}/${projectId}`, projectXml);
         console.log('todo: run profiler to get analysis info');
-        let result = await setupAndRunProfiler(estimatedCoverageInfo);
-        console.log("todo: comment/uncomment :save analysis info after local asset works");
-        await saveAnalysisInfo(result);
+        let info = await setupAndRunProfiler(estimatedCoverageInfo);
+        await saveAnalysisInfo({info, analysis_data_endpoint_url});
         setTimeout(callback(), 2000);
     }
 };

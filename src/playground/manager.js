@@ -34,7 +34,7 @@ app.controller('analysisTaskController', async function ($scope, $http) {
     $scope.updateDataStatus = async function (id) {
         await $http({
             method: "GET",
-            url: `${DATA_SERVICE_URL}/${id}`
+            url: `${PROJECT_DATA_SERVICE_URL}/${id}`
         }).then(resp => $scope.projectDataStatuses[id] = resp.data)
             .then(() => {
                 $scope.remainingTasks.data = getRemainingIdsForDataTask().length;
@@ -64,7 +64,7 @@ app.controller('analysisTaskController', async function ($scope, $http) {
         }, {});
     };
     // retrieving remote data
-    let projectDataStatuses = $scope.projectDataStatuses = await getId2Entries(projects, DATA_SERVICE_URL);
+    let projectDataStatuses = $scope.projectDataStatuses = await getId2Entries(projects, PROJECT_DATA_SERVICE_URL);
     
     let analysisInfos = {
         coverage : $scope.analysisInfos = await getId2Entries(projects, COVERAGE_INFO_SERVICE_URL)
@@ -137,7 +137,7 @@ app.controller('analysisTaskController', async function ($scope, $http) {
         }
 
         if (task === 'DUPEXPR') {
-            let remaining = getRemainingIdsForAnalysisTask({analysisName: 'DUPEXPR', reanalyzeAll: false});
+            let remaining = filterIdsForAnalysisTask({analysisName:'dupexpr'});
             if (status === "START" && remaining.length > 0){
                 let nextProjectId = remaining[0];
                 frame.contentWindow.location.assign(`executor-dupexpr.html#${nextProjectId}`);
@@ -163,6 +163,11 @@ app.controller('analysisTaskController', async function ($scope, $http) {
     } else if (filterIdsForAnalysisTask({analysisName:'coverage'}).length > 0) {
         window.parent.postMessage({
             task: 'COVERAGE',
+            status: 'START'
+        }, '*');
+    } else if (filterIdsForAnalysisTask({analysisName:'dupexpr'}).length > 0) {
+        window.parent.postMessage({
+            task: 'DUPEXPR',
             status: 'START'
         }, '*');
     }
