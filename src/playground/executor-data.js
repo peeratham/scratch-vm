@@ -14,7 +14,7 @@ const sendReqToSave = async function (projectId, sb3File, xml) {
         cache: "no-cache",
         body: formData
     });
-    console.log(response);
+
     return response;
 };
 
@@ -35,10 +35,12 @@ const createUploadTask = function (projectId, callback) {
 }
 
 
-window.onload = function () {
+window.onload = async function () {
     const projectIdDom = document.getElementById("projectId");
     let projectId = projectIdDom.innerText = location.hash.substring(1, location.hash.length);
-    configureProjectResourceUrl({LOCAL_ASSET:false});
+    console.log('TODO: check if project/src exists');
+    let dataStat = await fetch(`http://localhost:3000/data/${projectId}`).then(res => res.json());
+    configureProjectResourceUrl({LOCAL_ASSET:dataStat.src_exists});
     loadProjectAndRunTask(
         projectId,
         createUploadTask(projectId, function () { updateStatus(projectId, 'DATA', 'COMPLETE') }));

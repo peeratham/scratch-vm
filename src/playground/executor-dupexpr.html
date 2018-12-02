@@ -1,0 +1,40 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Project Executor</title>
+
+</head>
+<body>
+    <h1>Duplicate Expr Analysis</h1>
+    <b>Project ID</b>: <span id="projectId"></span><br />
+    <div class="profile-tables">
+      <div id="profile-refactoring-result"></div>
+      <select id="selectedTarget" multiple></select>
+      <select id="improvables" multiple></select>
+      <select id="changesWalkThrough" multiple></select>
+      <div id="blocks" style="height: 800px; width: 800px;"></div>
+  </div>
+  
+    <canvas id="scratch-stage"></canvas>
+    <div id="blocks" style="height: 500px; width: 500px;"></div>
+
+        <!-- FPS counter, Blocks, Renderer -->
+        <script src="./vendor.js"></script>
+        <!-- Storage module -->
+        <script src="./scratch-storage.js"></script>
+        <!-- Stage rendering -->
+        <script src="./scratch-render.js"></script>
+        <!-- SVG rendering -->
+        <script src="./scratch-svg-renderer.js"></script>
+        <!-- VM -->
+        <script src="./scratch-vm.js"></script>
+        <script src="./configs.js"></script>
+        <script src="./utils-core.js"></script>
+        <script src="./scratch-setup.js"></script>
+        <script src="./executor-core.js"></script>
+        <script src="./profiler-run.js"></script>
+        <script src="./executor-dupexpr.js" type="text/javascript" charset="utf-8"></script>
+</body>
+</html>

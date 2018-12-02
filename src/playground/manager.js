@@ -4,30 +4,40 @@ app.controller('analysisTaskController', async function ($scope, $http) {
     $scope.projects = {};
     $scope.projectDataStatuses = {};
     //add analysis-infos model/get remaining and updater
-    $scope.analysisInfos = {};
+    $scope.analysisInfos = {
+        coverage : {},
+        dupexpr: {}
+    };
 
     $scope.tasks = {
         data: true,
         coverage: false
     };
-    $scope.getAnalysisInfo = function (id, analysisType) {
-        return $scope.analysisInfos[id] ? $scope.analysisInfos[id][analysisType] : "";
+    $scope.getAnalysisInfo = function (id, analysis_name) {
+        return $scope.analysisInfos[analysis_name][id] ? $scope.analysisInfos[analysis_name][id] : "";
     }
 
-    $scope.updateAnalysisInfo = async function (id) {
+    $scope.updateAnalysisInfo = async function (id, analysis_name) {
         await $http({
             method: "GET",
-            url: `${COVERAGE_INFO_SERVICE_URL}/${id}`
+            url: `${ANALYSIS_INFO_SERVICE_URL}/${analysis_name}/${id}`
         })
-            .then(resp => $scope.analysisInfos[id] = resp.data)
+            .then(resp => $scope.analysisInfos[analysis_name][id] = resp.data)
             .then(() => {
                 $scope.remainingTasks.coverage = filterIdsForAnalysisTask({analysisName:'coverage'}).length;
             });
     }
 
-    $scope.getDataStatus = function (id) {
+    const getMissingData = function(id){
+        let res = $scope.projectDataStatuses[id];
+        let missing = Object.entries(res).filter(([key, value]) => value===false).map(([key,value]) => key);
+        return missing;
+    }
+
+    $scope.getDataStatusStr = function (id) {
         if ($scope.projectDataStatuses[id]) {
-            return $scope.projectDataStatuses[id]['project_dir_exists'] === true ? "complete" : "incomplete";
+            let missing = getMissingData(id);
+            return missing.length ===0 ? "complete" : "incomplete ("+missing+")";
         }
         return "";
     }
@@ -48,7 +58,10 @@ app.controller('analysisTaskController', async function ($scope, $http) {
     // }).then(resp => resp.data);
 
     //test
-    projects =$scope.projects = [{_id: '254317821'}];
+    projects =$scope.projects = [
+        {_id: 'test_extract_var'}
+//         {_id: '254317821'}
+    ];
 
     const getId2Entries = async function (projects, remoteServiceURL) {
         return (await Promise.all(projects.map(p =>
@@ -66,12 +79,13 @@ app.controller('analysisTaskController', async function ($scope, $http) {
     // retrieving remote data
     let projectDataStatuses = $scope.projectDataStatuses = await getId2Entries(projects, PROJECT_DATA_SERVICE_URL);
     
-    let analysisInfos = {
-        coverage : $scope.analysisInfos = await getId2Entries(projects, COVERAGE_INFO_SERVICE_URL)
+    let analysisInfos = $scope.analysisInfos = {
+        coverage : await getId2Entries(projects, COVERAGE_INFO_SERVICE_URL),
+        dupexpr : await getId2Entries(projects, DUPEXPR_INFO_SERVICE_URL)
     };
 
 
-    const getRemainingIdsForDataTask = () => projects.filter(p => projectDataStatuses[p._id]['project_dir_exists'] === false).map(p => p._id);    
+    const getRemainingIdsForDataTask = () => projects.filter(p => getMissingData(p._id).length > 0).map(p => p._id);    
 
     const filterIdsForAnalysisTask = ({analysisName, reanalyzeAll=false}) => {
         if(reanalyzeAll === true){
@@ -82,8 +96,8 @@ app.controller('analysisTaskController', async function ($scope, $http) {
             return projects.filter(p => analysisInfos.coverage[p._id] === undefined || analysisInfos.coverage[p._id]['info']['green_flag_coverage'] === undefined).map(p => p._id);
         }
         else if(analysisName==='dupexpr'){
-            console.log("TODO: locally filter analysisInfo[id] === undefined"); //show be renamed to filter remaining ids
-            return ['254317821'];
+            return projects.filter(p => analysisInfos.dupexpr[p._id] === undefined || analysisInfos.coverage[p._id]['info']['green_flag_coverage'] === undefined).map(p => p._id);
+//             return ['test-blocking'];
         }
         else {
             throw new Exception("Unknown analysis: "+analysisName);
@@ -113,7 +127,7 @@ app.controller('analysisTaskController', async function ($scope, $http) {
                 if ($scope.remainingTasks.data > 0) {
                     let nextProjectId = getRemainingIdsForDataTask()[0];
                     frame.contentWindow.location.assign(`executor-data.html#${nextProjectId}`);
-                } else {
+                } else if($scope.remainingTasks.coverage > 0) {
                     //coverage next
                     let nextProjectId = filterIdsForAnalysisTask({analysisName:'coverage'})[0];
                     frame.contentWindow.location.assign(`executor-coverage.html#${nextProjectId}`);
@@ -127,7 +141,7 @@ app.controller('analysisTaskController', async function ($scope, $http) {
                 let nextProjectId = remaining[0];
                 frame.contentWindow.location.assign(`executor-coverage.html#${nextProjectId}`);
             } else if (status === "COMPLETE") {
-                await $scope.updateAnalysisInfo(project_id);
+                await $scope.updateAnalysisInfo(project_id, 'coverage');
                 $scope.$apply();
                 if ($scope.remainingTasks.coverage > 0) {
                     let nextProjectId = remaining[0];
@@ -142,6 +156,7 @@ app.controller('analysisTaskController', async function ($scope, $http) {
                 let nextProjectId = remaining[0];
                 frame.contentWindow.location.assign(`executor-dupexpr.html#${nextProjectId}`);
             } else if (status === "COMPLETE") {
+                await $scope.updateAnalysisInfo(project_id, 'dupexpr');
                 this.console.log('TODO: await $scope.updateAnalysisInfo(analysisName, project_id);'); //first change coverage task to updateCoverageInfo
                 /**
                  * $scope.$apply();

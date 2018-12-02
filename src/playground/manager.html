@@ -17,7 +17,12 @@
                 <label>Coverage:<input type="checkbox" ng-model="tasks.coverage" ng-init="tasks.coverage=true"></label>
             </form>
             <div>Total: {{projects.length}}, Missing: {{remainingTasks.data}}</div>
-            <div ng-repeat="p in projects">{{p._id}} : {{getDataStatus(p._id)}} :{{getAnalysisInfo(p._id,'green_flag_coverage')}}</div>      
+            <div ng-repeat="p in projects">
+                id: {{p._id}} <br>
+                data_status: {{getDataStatusStr(p._id)}} <br> 
+                coverage: {{getAnalysisInfo(p._id,'coverage')['info']['green_flag_coverage']}} <br>
+                dupexpr: {{getAnalysisInfo(p._id,'dupexpr')['info']}} <br>
+            </div>      
         </div>
     </div>
 
