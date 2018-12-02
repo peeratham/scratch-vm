@@ -21,11 +21,11 @@ app.controller('analysisTaskController', async function ($scope, $http) {
         await $http({
             method: "GET",
             url: `${ANALYSIS_INFO_SERVICE_URL}/${analysis_name}/${id}`
-        })
-            .then(resp => $scope.analysisInfos[analysis_name][id] = resp.data)
-            .then(() => {
-                $scope.remainingTasks.coverage = filterIdsForAnalysisTask({analysisName:'coverage'}).length;
-            });
+        }).then(resp => $scope.analysisInfos[analysis_name][id] = resp.data, 
+                err => {console.log(err);}
+        );
+
+        $scope.remainingTasks.coverage = filterIdsForAnalysisTask({analysisName:'coverage'}).length;
     }
 
     const getMissingData = function(id){
@@ -58,6 +58,7 @@ app.controller('analysisTaskController', async function ($scope, $http) {
     // }).then(resp => resp.data);
 
     //test
+    console.log('TODO: change back to get project list from db');
     projects =$scope.projects = [
         {_id: 'test_extract_var'}
 //         {_id: '254317821'}

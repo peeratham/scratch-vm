@@ -55,8 +55,10 @@ window.onload = function(){
     const projectIdDom = document.getElementById("projectId");
     let projectId = projectIdDom.innerText = location.hash.substring(1,location.hash.length);
     configureProjectResourceUrl({LOCAL_ASSET:true});
-    loadProjectAndRunTask(
+    loadProjectAndRunTask({
         projectId,
-        createCoverageTask(projectId, function () { updateStatus(projectId, 'COVERAGE', 'COMPLETE') }));
+        wsReadyCallback: createCoverageTask(projectId, function () { updateStatus(projectId, 'COVERAGE', 'COMPLETE') }),
+        requiredAnalysisUi:false
+    });
 };
 

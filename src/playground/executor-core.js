@@ -23,8 +23,8 @@ const updateStatus = function (projectId, task, status) {
     }, '*');
 };
 
-const loadProjectAndRunTask = function (projectInputId, wsReadyCallback) {
-    if(projectInputId===undefined){
+const loadProjectAndRunTask = function ({projectId, wsReadyCallback, requiredAnalysisUi}) {
+    if(projectId===undefined){
         throw new Exception("execution request for undefined project id");
     }
 
@@ -81,10 +81,16 @@ const loadProjectAndRunTask = function (projectInputId, wsReadyCallback) {
     storage.addWebSource([AssetType.ImageVector, AssetType.ImageBitmap, AssetType.Sound], getAssetUrl);
     Scratch.vm.attachStorage(storage);
 
-    Project.ID = Scratch.vm.downloadProjectId(projectInputId);
+    Project.ID = Scratch.vm.downloadProjectId(projectId);
     Scratch.vm.on('workspaceReady', async (data) => {
         await wsReadyCallback();
     });
+
+    if(requiredAnalysisUi){
+        console.log('TODO: SETUP ANALYSIS UI');
+    }
+
+
     // Instantiate the renderer and connect it to the VM.
     const canvas = document.getElementById('scratch-stage');
     const renderer = new window.ScratchRender(canvas);

@@ -101,7 +101,7 @@ const createAnalysisTask = function(projectId, callback){
         for(let instance_id of Object.keys(analysisInfo.instances)){
             let updatedAnalysisInfo = await setupAndRunProfiler({instance_id, analysisInfo});
             console.log('TODO: uncomment this to save');
-    //         await saveAnalysisInfo({info:updatedAnalysisInfo, analysis_data_endpoint_url});
+            await saveAnalysisInfo({info:updatedAnalysisInfo, analysis_data_endpoint_url});
 
             setTimeout(callback(), 2000);
         }
@@ -112,8 +112,11 @@ window.onload = function(){
     const projectIdDom = document.getElementById("projectId");
     let projectId = projectIdDom.innerText = location.hash.substring(1,location.hash.length);
     configureProjectResourceUrl({LOCAL_ASSET:true});
-    loadProjectAndRunTask(
-        projectId,
-        createAnalysisTask(projectId, function () { updateStatus(projectId, 'DUPEXPR', 'COMPLETE') }));
+    loadProjectAndRunTask({
+        projectId, 
+        wsReadyCallback: createAnalysisTask(projectId, function () { updateStatus(projectId, 'DUPEXPR', 'COMPLETE') }), 
+        requiredAnalysisUi:true
+    }
+    );
 }
 

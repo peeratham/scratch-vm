@@ -38,11 +38,14 @@ const createUploadTask = function (projectId, callback) {
 window.onload = async function () {
     const projectIdDom = document.getElementById("projectId");
     let projectId = projectIdDom.innerText = location.hash.substring(1, location.hash.length);
-    console.log('TODO: check if project/src exists');
     let dataStat = await fetch(`http://localhost:3000/data/${projectId}`).then(res => res.json());
-    configureProjectResourceUrl({LOCAL_ASSET:dataStat.src_exists});
-    loadProjectAndRunTask(
+    configureProjectResourceUrl({LOCAL_ASSET:dataStat.project_dir_exists});
+    
+//     let wsReadyCallback = createUploadTask(projectId, function () { updateStatus(projectId, 'DATA', 'COMPLETE') });
+    loadProjectAndRunTask({
         projectId,
-        createUploadTask(projectId, function () { updateStatus(projectId, 'DATA', 'COMPLETE') }));
+        wsReadyCallback: createUploadTask(projectId, function () { updateStatus(projectId, 'DATA', 'COMPLETE') }),
+        requiredAnalysisUi:false
+    });
 };
 
