@@ -23,12 +23,12 @@ const updateStatus = function (projectId, task, status) {
     }, '*');
 };
 
-const loadProjectAndRunTask = function ({projectId, wsReadyCallback, requiredAnalysisUi}) {
+const loadProjectAndRunTask = function ({providedVM, projectId, wsReadyCallback}) {
     if(projectId===undefined){
         throw new Exception("execution request for undefined project id");
     }
 
-    const vm = new window.VirtualMachine();
+    const vm = providedVM || new window.VirtualMachine();
     Scratch.vm = vm;
     let firstTimeWorkspaceUpdate = true;
 
@@ -86,35 +86,7 @@ const loadProjectAndRunTask = function ({projectId, wsReadyCallback, requiredAna
         await wsReadyCallback();
     });
 
-    if(requiredAnalysisUi){
-        console.log('TODO: SETUP ANALYSIS UI');
-        Scratch.vm.on('targetsUpdate', data => {
-            // Clear select box.
-            while (selectedTarget.firstChild) {
-                selectedTarget.removeChild(selectedTarget.firstChild);
-            }
-            // Generate new select box.
-            for (let i = 0; i < data.targetList.length; i++) {
-                const targetOption = document.createElement('option');
-                targetOption.setAttribute('value', data.targetList[i].id);
-                // If target id matches editingTarget id, select it.
-                if (data.targetList[i].id === data.editingTarget) {
-                    targetOption.setAttribute('selected', 'selected');
-                }
-                targetOption.appendChild(
-                    document.createTextNode(data.targetList[i].name)
-                );
-                selectedTarget.appendChild(targetOption);
-            }
-        });
-        
-        const selectedTarget = document.getElementById('selectedTarget');
-        selectedTarget.onchange = async function () {
-            Blockly.Events.recordUndo = false;
-            await Scratch.vm.setEditingTarget(this.value);
-            Blockly.Events.recordUndo = true;
-        };
-    }
+    
 
 
     // Instantiate the renderer and connect it to the VM.
