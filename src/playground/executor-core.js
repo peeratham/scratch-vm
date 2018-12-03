@@ -51,7 +51,7 @@ const loadProjectAndRunTask = function ({providedVM, projectId, wsReadyCallback}
         disable: false,
         collapse: false,
         media: '../playground/media/',
-        readOnly: true,
+        readOnly: false,
         scrollbars: true,
         sounds: true,
         zoom: {
