@@ -97,6 +97,9 @@ const createAnalysisTask = function (vm, projectId, callback) {
             analysisType: "duplicate-expression", evalMode: true
         });
 
+        const instanceSelectionDom = document.getElementById('instances');
+        renderRefactorableList(instanceSelectionDom, analysisInfo);
+
         for (let instance_id of Object.keys(analysisInfo.instances)) {
             let updatedAnalysisInfo = await setupAndRunProfiler({ providedVM: vm, instance_id, analysisInfo });
             console.log('TODO: uncomment this to save');
@@ -134,7 +137,116 @@ const setupAnalysisUI = ({ vm }) => {
         await vm.setEditingTarget(this.value);
         Blockly.Events.recordUndo = true;
     };
+
+    console.log('TODO: add instance list');
 }
+
+// =====ANALYSIS UI UTILS=============
+const switchTarget =  async function(refactoringTarget) {
+    if (Scratch.vm.editingTarget.getName() != refactoringTarget) {
+        console.log("switch target to:" + refactoringTarget);
+        let targetId = Scratch.vm.runtime.targets.filter(t => t.getName() === refactoringTarget)[0].id;
+        Blockly.Events.recordUndo = false;
+        await Scratch.vm.setEditingTarget(targetId);
+        Blockly.Events.recordUndo = true;
+    }
+}
+
+const applyTransformations = async function(transforms, initialReport) {
+    console.log('TODO: do not record transforms data on invariant insertion');
+    Blockly.Events.recordUndo = true;
+    console.log(transforms);
+    //START timer
+    const t0 = performance.now();
+
+
+    for (var action of transforms) {
+        try {
+            await Scratch.workspace.blockTransformer.executeAction(action);
+            //synchronous for now to make sure vm update its internal representation correclty in sequence of the applied transformation
+            await Blockly.Events.fireNow_();
+        } catch (err) {
+            console.log("Failed transformation:" + JSON.stringify(action));
+            throw err;
+        }
+    }
+    //STOP timer
+    const t1 = performance.now();
+
+    initialReport.resp_time = t1 - t0;
+    initialReport.num_transforms = transforms.length;
+
+}
+
+const setupInvariantChecks = function(setupObj,invChecks){
+    let actions = setupObj['actions'];
+    (async () => {
+            await applyTransformations(actions, {});
+            await applyTransformations(invChecks, {});
+    })();
+}
+
+
+const renderRefactorableList = async function(instanceSelectionDom, json){
+    if (json.error != null) {
+        console.log(JSON.stringify(json.error));
+        return;
+    }else{
+        Scratch.json = json; 
+    }
+    
+    var refactorableData = json['instances'];
+    console.log('TODO: sort instnaces based on transformation length');
+    for(let instance of Object.values(refactorableData)){
+        const refactorable = document.createElement('option');
+        refactorable.setAttribute('value', instance.id);
+
+        refactorable.appendChild(
+            document.createTextNode(instance.target + ":" + instance.id)
+        );
+
+        instanceSelectionDom.appendChild(refactorable);
+    }
+
+    instanceSelectionDom.onchange = async () => {
+        let improvable = refactorableData[instanceSelectionDom.value]
+        
+        //cleaning up previous transformations
+        while (Scratch.workspace.hasUndoStack()) {
+            await Scratch.workspace.undo();
+            await Blockly.Events.fireNow_();
+        }
+
+        let refactoringTarget = improvable["target"];
+        await switchTarget(refactoringTarget);
+        
+        if(improvable.transforms){
+            await applyTransformations(improvable.transforms,{});
+            await setupInvariantChecks(json['checkSetup'], improvable.invariants);
+            return;
+        }
+        
+        console.log('TODO: populate walkThru');
+        // populateWalkThru(improvable);
+        
+        //populate field to report safety evaluation data
+        const failButton = document.getElementById("markAsFailButton");
+        const comment = document.getElementById("comment");
+        
+        // failButton.addEventListener("click", function(){
+        //     let refactorable_id = document.getElementById('improvables').value;
+        //     let initialReport = {refactorable_id:refactorable_id};
+        //     // let improvable = projectReport.improvables.find((itm)=>itm.refactorable_id===refactorable_id)||{};
+        //     initialReport.predicted = improvable.transforms.length? "pass":"fail";
+        //     initialReport.actual = "fail";//override
+            
+        //     initialReport.comment = comment.value;
+            
+        //     Scratch.projectReport["improvables"].push(initialReport);
+        //     return;
+        // });
+    };
+};
 
 window.onload = function () {
     const projectIdDom = document.getElementById("projectId");
