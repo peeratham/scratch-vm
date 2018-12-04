@@ -60,8 +60,7 @@ const getProjectXml = async function (id) {
 const setupAndRunProfiler = async function ({ instance_id, analysisInfo }) {
     let updatedInstanceInfos = analysisInfo['instances'];
     let currentInstanceInfo = updatedInstanceInfos[instance_id];
-    console.log('TODO: setup or apply transformation/invariant checks');
-
+    
     let profilerRun = Scratch.ProfileRun = new ProfilerRun({
         vm: Scratch.vm, warmUpTime: 0, maxRecordedTime: 5000, projectId: Project.ID, initialReport: {},
         coverageInfo: currentInstanceInfo.coverageInfo
@@ -100,12 +99,16 @@ const createAnalysisTask = function (vm, projectId, callback) {
         const instanceSelectionDom = document.getElementById('instances');
         renderRefactorableList(instanceSelectionDom, analysisInfo);
 
-        for (let instance_id of Object.keys(analysisInfo.instances)) {
-            let updatedAnalysisInfo = await setupAndRunProfiler({ providedVM: vm, instance_id, analysisInfo });
-            console.log('TODO: uncomment this to save');
-            // await saveAnalysisInfo({info:updatedAnalysisInfo, analysis_data_endpoint_url});
-
-            setTimeout(callback(), 2000);
+        for (let i = 0; i < instanceSelectionDom.length; i++) {
+            instanceSelectionDom.selectedIndex = i;
+            instanceSelectionDom.dispatchEvent(new Event('change'));
+            let instance_id = instanceSelectionDom.value;
+            let improvable = analysisInfo.instances[instance_id];
+            if(improvable.transforms.length>0){
+                let updatedAnalysisInfo = await setupAndRunProfiler({ providedVM: vm, instance_id, analysisInfo });
+                console.log('TODO: uncomment this to save');
+                // await saveAnalysisInfo({info:updatedAnalysisInfo, analysis_data_endpoint_url});
+            }
         }
     }
 }
@@ -232,19 +235,6 @@ const renderRefactorableList = async function(instanceSelectionDom, json){
         //populate field to report safety evaluation data
         const failButton = document.getElementById("markAsFailButton");
         const comment = document.getElementById("comment");
-        
-        // failButton.addEventListener("click", function(){
-        //     let refactorable_id = document.getElementById('improvables').value;
-        //     let initialReport = {refactorable_id:refactorable_id};
-        //     // let improvable = projectReport.improvables.find((itm)=>itm.refactorable_id===refactorable_id)||{};
-        //     initialReport.predicted = improvable.transforms.length? "pass":"fail";
-        //     initialReport.actual = "fail";//override
-            
-        //     initialReport.comment = comment.value;
-            
-        //     Scratch.projectReport["improvables"].push(initialReport);
-        //     return;
-        // });
     };
 };
 
