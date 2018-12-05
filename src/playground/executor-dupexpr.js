@@ -59,31 +59,25 @@ const getProjectXml = async function (id) {
 
 const setupAndRunProfiler = async function ({ instance_id, analysisInfo }) {
     let updatedInstanceInfos = analysisInfo['instances'];
-    let currentInstanceInfo = updatedInstanceInfos[instance_id];
+    let currentInstance = updatedInstanceInfos[instance_id];
     
     let profilerRun = Scratch.ProfileRun = new ProfilerRun({
         vm: Scratch.vm, warmUpTime: 0, maxRecordedTime: 5000, projectId: Project.ID, initialReport: {},
-        coverageInfo: currentInstanceInfo.coverageInfo
+        coverageInfo: currentInstance.coverageInfo
     });
     await profilerRun.runProfiler();
 
-    console.log('TODO: record safety info');
-    let safetyInfo = { 'failed_invariant': false, 'failed_loc': [] };
+    console.log('TODO: record safety metrics');
+    updatedInstanceInfos[instance_id].safety =  { 'failed_invariant': false, 'failed_loc': [] };
+    
+    // reformat result attributes (applicability, value)
+    console.log('TODO: reformat result attributes (applicability, value)');
 
-    updatedInstanceInfos[instance_id] = { ...currentInstanceInfo, ...safetyInfo };
-    delete updatedInstanceInfos[instance_id].transforms;    // remove transforms from the final result (only save the loc of instance);
-    delete updatedInstanceInfos[instance_id].invariants;
+    // include only necessary details in the final result (only save the loc of instance);
+    const {id,type, failed_invariant, info, applicability, value, safety, responsiveness} = updatedInstanceInfos[instance_id];
+    updatedInstanceInfos[instance_id] = {id,type, failed_invariant, info, applicability, value, safety, responsiveness};
 
-    let result = {
-        '_id': analysisInfo._id,
-        'analysis_name': 'dupexpr',
-        'info': {
-            'project_metrics': analysisInfo['project_metrics'],
-            'instances': updatedInstanceInfos
-        }
-    };
-
-    return result;
+   
 }
 
 const createAnalysisTask = function (vm, projectId, callback) {
@@ -98,18 +92,29 @@ const createAnalysisTask = function (vm, projectId, callback) {
 
         const instanceSelectionDom = document.getElementById('instances');
         renderRefactorableList(instanceSelectionDom, analysisInfo);
-
+        
         for (let i = 0; i < instanceSelectionDom.length; i++) {
             instanceSelectionDom.selectedIndex = i;
             instanceSelectionDom.dispatchEvent(new Event('change'));
             let instance_id = instanceSelectionDom.value;
             let improvable = analysisInfo.instances[instance_id];
             if(improvable.transforms.length>0){
-                let updatedAnalysisInfo = await setupAndRunProfiler({ providedVM: vm, instance_id, analysisInfo });
-                console.log('TODO: uncomment this to save');
-                // await saveAnalysisInfo({info:updatedAnalysisInfo, analysis_data_endpoint_url});
+                await setupAndRunProfiler({ providedVM: vm, instance_id, analysisInfo });
             }
         }
+
+        delete analysisInfo.checkSetup; 
+        console.log('TODO: comment/uncomment below to disable/enable save');
+        let result = {
+            '_id': analysisInfo._id,
+            'analysis_name': 'dupexpr',
+            'info': {
+                'project_metrics': analysisInfo.project_metrics,
+                'instances': analysisInfo.instances
+            }
+         };
+        
+        await saveAnalysisInfo({info: result, analysis_data_endpoint_url});
     }
 }
 
@@ -162,7 +167,9 @@ const applyTransformations = async function(transforms, initialReport) {
     //START timer
     const t0 = performance.now();
 
-
+    if(!Array.isArray(transforms)){
+        console.log('DEBUG: NOT ITERABLE');
+    }
     for (var action of transforms) {
         try {
             await Scratch.workspace.blockTransformer.executeAction(action);
@@ -212,7 +219,20 @@ const renderRefactorableList = async function(instanceSelectionDom, json){
     }
 
     instanceSelectionDom.onchange = async () => {
-        let improvable = refactorableData[instanceSelectionDom.value]
+        let improvable = refactorableData[instanceSelectionDom.value];
+        console.log('TODO: SHOULD AUGMENT additional attribute here');
+        //augment the improvable object with result attributes
+        console.log('TODO: move initialization to when render the instance in the selection dom');
+        //augment applicability
+        improvable.applicability = {};
+
+        //value
+        improvable.value = {};
+
+        //safety
+        improvable.safety = {};
+
+        improvable.responsiveness = {};
         
         //cleaning up previous transformations
         while (Scratch.workspace.hasUndoStack()) {
@@ -224,7 +244,8 @@ const renderRefactorableList = async function(instanceSelectionDom, json){
         await switchTarget(refactoringTarget);
         
         if(improvable.transforms){
-            await applyTransformations(improvable.transforms,{});
+            await applyTransformations(improvable.transforms, improvable.responsiveness);
+            console.log('TODO: SAVE'+ JSON.stringify(improvable.responsiveness));
             await setupInvariantChecks(json['checkSetup'], improvable.invariants);
             return;
         }
@@ -235,6 +256,8 @@ const renderRefactorableList = async function(instanceSelectionDom, json){
         //populate field to report safety evaluation data
         const failButton = document.getElementById("markAsFailButton");
         const comment = document.getElementById("comment");
+        
+        
     };
 };
 
