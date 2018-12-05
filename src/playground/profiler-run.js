@@ -6,6 +6,7 @@ class Refactorings {
     constructor(profiler, report, coverageInfo) {
         this.blockIdRecords = profiler.blockIdRecords;
         this.executedBlockIds = null;
+        this.result = {failed_invariant : false, failed_loc: []};
 //         this.stats = new IdStatView(report);
         this.numBlocksCovered = 0;
         this.completed = 0;
@@ -36,12 +37,14 @@ class Refactorings {
         }
 
         if(failed){
-            this.stats.update(invariantCovered.splice(-1,1)); //object map key is in the order it was inserted
+            this.result.failed_invariant = true;
+            this.result.failed_loc.push(invariantCovered.pop());
             return true;
         }
         
         // completion relative to orginal blocks not including invariant checks
         if(this.completed >= 1){
+            console.log('TODO: record whether invariant is preserved for this run');
             return true;
         }
 
@@ -56,7 +59,7 @@ class ProfilerRun {
         this.maxRecordedTime = maxRecordedTime;
         this.warmUpTime = warmUpTime;
         this.projectId = projectId;
-        this.report = {};
+        this.report = initialReport;
 
         vm.runtime.enableProfiling();
         const profiler = this.profiler = vm.runtime.profiler;
@@ -114,12 +117,16 @@ class ProfilerRun {
         return new Promise((resolve, reject) => {
             var stopOnTimeLimit = setTimeout(() => {
                 this.stopProfileRun();
+                console.log('TODO: record result fo this.stats.result');
+                this.report = this.stats.result;
                 clearInterval(checkCompletion);
                 resolve();
             }, 100 + this.warmUpTime + this.maxRecordedTime);
 
             var checkCompletion = setInterval(()=>{
                  if(this.stats.shouldStop()){
+                    console.log('TODO: record result fo this.stats.result');
+                    this.report = this.stats.result;
                     this.stopProfileRun();
                     clearTimeout(stopOnTimeLimit);
                     clearInterval(checkCompletion);

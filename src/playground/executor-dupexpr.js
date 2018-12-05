@@ -57,9 +57,14 @@ const getProjectXml = async function (id) {
     return xml;
 }
 
+const updateResult = function(objTarget, attributeName, objSource){
+  objTarget[attributeName] = objSource;  
+};
+
 const setupAndRunProfiler = async function ({ instance_id, analysisInfo }) {
     let updatedInstanceInfos = analysisInfo['instances'];
     let currentInstance = updatedInstanceInfos[instance_id];
+    
     
     let profilerRun = Scratch.ProfileRun = new ProfilerRun({
         vm: Scratch.vm, warmUpTime: 0, maxRecordedTime: 5000, projectId: Project.ID, initialReport: {},
@@ -67,17 +72,12 @@ const setupAndRunProfiler = async function ({ instance_id, analysisInfo }) {
     });
     await profilerRun.runProfiler();
 
-    console.log('TODO: record safety metrics');
-    updatedInstanceInfos[instance_id].safety =  { 'failed_invariant': false, 'failed_loc': [] };
-    
-    // reformat result attributes (applicability, value)
-    console.log('TODO: reformat result attributes (applicability, value)');
+    console.log('TODO: CREATE A METHOD FOR UPDATE');
+    updateResult(updatedInstanceInfos[instance_id], 'safety', profilerRun.report);
 
     // include only necessary details in the final result (only save the loc of instance);
     const {id,type, failed_invariant, info, applicability, value, safety, responsiveness} = updatedInstanceInfos[instance_id];
     updatedInstanceInfos[instance_id] = {id,type, failed_invariant, info, applicability, value, safety, responsiveness};
-
-   
 }
 
 const createAnalysisTask = function (vm, projectId, callback) {
@@ -98,6 +98,9 @@ const createAnalysisTask = function (vm, projectId, callback) {
             instanceSelectionDom.dispatchEvent(new Event('change'));
             let instance_id = instanceSelectionDom.value;
             let improvable = analysisInfo.instances[instance_id];
+            console.log('TODO: reformat value');
+            updateResult(improvable, 'value', {num_blocks_changed:improvable.info.num_blocks_changed});
+
             if(improvable.transforms.length>0){
                 await setupAndRunProfiler({ providedVM: vm, instance_id, analysisInfo });
             }
@@ -114,7 +117,9 @@ const createAnalysisTask = function (vm, projectId, callback) {
             }
          };
         
-        await saveAnalysisInfo({info: result, analysis_data_endpoint_url});
+        console.log(JSON.stringify(result));
+
+        // await saveAnalysisInfo({info: result, analysis_data_endpoint_url});
     }
 }
 
@@ -160,10 +165,9 @@ const switchTarget =  async function(refactoringTarget) {
     }
 }
 
-const applyTransformations = async function(transforms, initialReport) {
+const applyTransformations = async function(transforms, report) {
     console.log('TODO: do not record transforms data on invariant insertion');
     Blockly.Events.recordUndo = true;
-    console.log(transforms);
     //START timer
     const t0 = performance.now();
 
@@ -183,9 +187,10 @@ const applyTransformations = async function(transforms, initialReport) {
     //STOP timer
     const t1 = performance.now();
 
-    initialReport.resp_time = t1 - t0;
-    initialReport.num_transforms = transforms.length;
-
+    if(report){
+        report.resp_time = t1 - t0;
+        report.num_transforms = transforms.length;    
+    }
 }
 
 const setupInvariantChecks = function(setupObj,invChecks){
@@ -221,19 +226,18 @@ const renderRefactorableList = async function(instanceSelectionDom, json){
     instanceSelectionDom.onchange = async () => {
         let improvable = refactorableData[instanceSelectionDom.value];
         console.log('TODO: SHOULD AUGMENT additional attribute here');
-        //augment the improvable object with result attributes
-        console.log('TODO: move initialization to when render the instance in the selection dom');
-        //augment applicability
         improvable.applicability = {};
-
-        //value
         improvable.value = {};
-
-        //safety
         improvable.safety = {};
-
         improvable.responsiveness = {};
-        
+
+        //augment applicability
+        console.log('TODO: get failed precond info from server response');
+        updateResult(improvable, 'applicability', {
+            applicable: improvable.transforms.length > 0,
+            failed_preconds : []
+        });
+
         //cleaning up previous transformations
         while (Scratch.workspace.hasUndoStack()) {
             await Scratch.workspace.undo();
@@ -244,8 +248,9 @@ const renderRefactorableList = async function(instanceSelectionDom, json){
         await switchTarget(refactoringTarget);
         
         if(improvable.transforms){
-            await applyTransformations(improvable.transforms, improvable.responsiveness);
-            console.log('TODO: SAVE'+ JSON.stringify(improvable.responsiveness));
+            let responsivenessResult = {};
+            await applyTransformations(improvable.transforms, responsivenessResult);
+            updateResult(improvable,'responsiveness', responsivenessResult);
             await setupInvariantChecks(json['checkSetup'], improvable.invariants);
             return;
         }
