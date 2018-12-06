@@ -223,6 +223,8 @@ const renderRefactorableList = async function(instanceSelectionDom, json){
         instanceSelectionDom.appendChild(refactorable);
     }
 
+
+
     instanceSelectionDom.onchange = async () => {
         let improvable = refactorableData[instanceSelectionDom.value];
         console.log('TODO: SHOULD AUGMENT additional attribute here');
@@ -230,6 +232,9 @@ const renderRefactorableList = async function(instanceSelectionDom, json){
         improvable.value = {};
         improvable.safety = {};
         improvable.responsiveness = {};
+
+        console.log('TODO: populate walkThru');
+        populateWalkThru(improvable);
 
         //augment applicability
         console.log('TODO: get failed precond info from server response');
@@ -257,8 +262,7 @@ const renderRefactorableList = async function(instanceSelectionDom, json){
             return;
         }
         
-        console.log('TODO: populate walkThru');
-        // populateWalkThru(improvable);
+
         
         //populate field to report safety evaluation data
         const failButton = document.getElementById("markAsFailButton");
@@ -266,6 +270,46 @@ const renderRefactorableList = async function(instanceSelectionDom, json){
         
         
     };
+};
+
+const populateWalkThru = function(improvable){
+    // populate changes walk through
+    let changesWalkThrough = document.getElementById('changesWalkThrough');
+    while (changesWalkThrough.firstChild) { //clear
+        changesWalkThrough.removeChild(changesWalkThrough.firstChild);
+    }
+    
+    if(improvable.transforms.length!=0){
+        let createdBlockActions = improvable.transforms.filter((itm)=>itm.type==='BlockCreateAction')
+        for(var action of createdBlockActions){
+            const changeItem = document.createElement('option');
+            changeItem.setAttribute('value', action.blockId);
+            changeItem.appendChild(
+                document.createTextNode(action.info + ": "+ action.blockId)
+            );
+            changesWalkThrough.appendChild(changeItem);
+        }
+    }else{
+        // in debug/eval mode walkthru smells
+        for(var blockId of improvable.smells){
+            const changeItem = document.createElement('option');
+            changeItem.setAttribute('value', blockId);
+            changeItem.appendChild(
+                document.createTextNode(blockId)
+            );
+            changesWalkThrough.appendChild(changeItem);
+        }
+    }
+    
+
+    changesWalkThrough.onchange = function() {
+        let id = this.value;
+        Blockly.getMainWorkspace().centerOnBlock(id);
+        setTimeout(()=>{
+            Blockly.getMainWorkspace().reportValue(id,id);
+        },500)
+    }
+
 };
 
 window.onload = function () {
