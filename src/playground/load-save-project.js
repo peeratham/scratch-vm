@@ -2,7 +2,6 @@
 var app = angular.module('loadSaveEditorApp', []);
 
 app.controller('loadSaveEditorController', async function ($scope, $http) {
-    
     let projectId = location.hash.substring(1, location.hash.length);
     $scope._id = projectId;
 });
@@ -96,6 +95,12 @@ addTargetButton.addEventListener("click", function(){
         });
     });
 });
+
+const renameButton = document.getElementById("renameTargetButton");
+const targetNameTextInput = document.getElementById("targetName");
+renameButton.addEventListener("click", function(){
+    Scratch.vm.renameSprite(Scratch.vm.editingTarget.id, targetNameTextInput.value);
+})
 
 const emptySprite = (name) => ({
     objName: name,
