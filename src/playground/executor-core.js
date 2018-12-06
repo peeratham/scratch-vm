@@ -101,4 +101,5 @@ const loadProjectAndRunTask = function ({providedVM, projectId, wsReadyCallback}
     vm.attachV2BitmapAdapter(new ScratchSVGRenderer.BitmapAdapter());
     // Run threads
     vm.start();
+    vm.stopAll();
 }

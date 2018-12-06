@@ -1,18 +1,20 @@
 <!doctype html>
 
 <html lang="en">
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
 <head>
     <meta charset="utf-8">
     <title>Project Executor</title>
     <link rel="stylesheet" href="./analysis-ui.css" type="text/css" media="screen">
 </head>
-<body>
-    <b>Project ID</b>: <span id="projectId"></span> <button id='save'>save</button><br />
+<body ng-app="loadSaveEditorApp" ng-controller="loadSaveEditorController" class="ng-cloak">
+    <label>Project ID: <input type="text" ng-model="_id" ng-init="_id" id="projectId"/></label><button id='save'>save</button><span id="status"></span><br />
     <div>
         <button id='greenFlag'>Green flag</button>
         <button id='stopAll'>Stop All</button>
         <div>
-            <span id="status"></span>
+            <select id="selectedTarget" multiple></select>
+            <button id='addTargetButton'>Add Target</button>
         </div>
     </div>
     <div class="stage-editor-parent-div">
@@ -36,6 +38,7 @@
         <script src="./utils-core.js"></script>
         <script src="./scratch-setup.js"></script>
         <script src="./executor-core.js"></script>
+        <script src="./analysis-ui.js"></script>
         <script src="./load-save-project.js" type="text/javascript" charset="utf-8"></script>
 </body>
 </html>
