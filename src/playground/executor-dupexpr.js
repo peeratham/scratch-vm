@@ -76,8 +76,8 @@ const setupAndRunProfiler = async function ({ instance_id, analysisInfo }) {
     updateResult(updatedInstanceInfos[instance_id], 'safety', profilerRun.report);
 
     // include only necessary details in the final result (only save the loc of instance);
-    const {id,type, failed_invariant, info, applicability, value, safety, responsiveness} = updatedInstanceInfos[instance_id];
-    updatedInstanceInfos[instance_id] = {id,type, failed_invariant, info, applicability, value, safety, responsiveness};
+//     const {id,type, failed_invariant, info, applicability, value, safety, responsiveness} = updatedInstanceInfos[instance_id];
+//     updatedInstanceInfos[instance_id] = {id,type, failed_invariant, info, applicability, value, safety, responsiveness};
 }
 
 const createAnalysisTask = function (vm, projectId, callback) {
@@ -234,7 +234,7 @@ const renderRefactorableList = async function(instanceSelectionDom, json){
         //augment applicability
         console.log('TODO: get failed precond info from server response');
         updateResult(improvable, 'applicability', {
-            applicable: improvable.transforms.length > 0,
+            applicable: improvable.transforms? improvable.transforms.length > 0: false,
             failed_preconds : []
         });
 

@@ -54,7 +54,8 @@ saveButton.addEventListener("click", function(){
     const projectIdDom = document.getElementById("projectId");
     let projectId = projectIdDom.innerText = location.hash.substring(1, location.hash.length);
     createUploadTask(projectId, function () { 
-        console.log('DONE UPDATED PROJECT DATA!');
+        const statusDom = document.getElementById("status");
+        statusDom.innerText = "Project Saved!";
     })();
 });
 
