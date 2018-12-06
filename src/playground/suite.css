@@ -11,7 +11,7 @@ iframe {
 
 .runner-controls {
     position: absolute;
-    width: 30em;
+    width: 20vw;
     height: 100%;
     left: 0;
     right: 30em;
@@ -25,10 +25,10 @@ iframe {
 
 .bench-frame-owner {
     position: absolute;
-    width: calc(100% - 30em);
+    width: calc(100% - 20vw);
     height: 100%;
-    left: 30em;
-    right: 100%;
+    left: 21vw;
+    right: 0;
     top: 0;
     bottom: 0;
 }

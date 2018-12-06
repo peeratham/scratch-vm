@@ -1,0 +1,23 @@
+.stage-editor-parent-div{
+    position: absolute;
+    left: 0px;
+    right: 0px;
+    top: 20vh;
+    bottom: 0px;
+}
+
+.editor-div{
+    position: absolute;
+    width: 80vw;
+    left: 0px;
+    top: 0px;
+    bottom:0px;
+}
+
+.stage-div{
+    position: absolute;
+    height: 20vw;
+    right: 0px;
+    top: 0px;
+    width: 20vw;
+}

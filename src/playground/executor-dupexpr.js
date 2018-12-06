@@ -106,7 +106,7 @@ const createAnalysisTask = function (vm, projectId, callback) {
             }
         }
 
-        delete analysisInfo.checkSetup; 
+        
         console.log('TODO: comment/uncomment below to disable/enable save');
         let result = {
             '_id': analysisInfo._id,
@@ -118,7 +118,7 @@ const createAnalysisTask = function (vm, projectId, callback) {
          };
         
         console.log(JSON.stringify(result));
-
+        
         // await saveAnalysisInfo({info: result, analysis_data_endpoint_url});
     }
 }
@@ -196,8 +196,8 @@ const applyTransformations = async function(transforms, report) {
 const setupInvariantChecks = function(setupObj,invChecks){
     let actions = setupObj['actions'];
     (async () => {
-            await applyTransformations(actions, {});
-            await applyTransformations(invChecks, {});
+            await applyTransformations(actions);
+            await applyTransformations(invChecks);
     })();
 }
 
@@ -247,11 +247,13 @@ const renderRefactorableList = async function(instanceSelectionDom, json){
         let refactoringTarget = improvable["target"];
         await switchTarget(refactoringTarget);
         
-        if(improvable.transforms){
+        if(improvable.transforms.length>0){
             let responsivenessResult = {};
             await applyTransformations(improvable.transforms, responsivenessResult);
             updateResult(improvable,'responsiveness', responsivenessResult);
             await setupInvariantChecks(json['checkSetup'], improvable.invariants);
+            return;
+        }else{
             return;
         }
         

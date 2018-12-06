@@ -4,6 +4,7 @@
 <head>
     <meta charset="utf-8">
     <title>Project Executor</title>
+    <link rel="stylesheet" href="./analysis-ui.css" type="text/css" media="screen">
 </head>
 <body>
     <b>Project ID</b>: <span id="projectId"></span> <button id='save'>save</button><br />
@@ -11,9 +12,12 @@
         <button id='greenFlag'>Green flag</button>
         <button id='stopAll'>Stop All</button>
     </div>
-    <canvas id="scratch-stage"></canvas>
-    <div id="blocks" style="height: 500px; width: 500px;"></div>
-
+    <div class="stage-editor-parent-div">
+        <div class="stage-div">
+            <canvas id="scratch-stage" style="width: 100%; height: 100%;"></canvas>
+        </div>
+        <div id="blocks" style="height: 95%;" class="editor-div"></div>
+    </div>
         <!-- FPS counter, Blocks, Renderer -->
         <script src="./vendor.js"></script>
         <!-- Storage module -->

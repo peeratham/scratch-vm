@@ -60,7 +60,9 @@ app.controller('analysisTaskController', async function ($scope, $http) {
     //test
     console.log('TODO: change back to get project list from db');
     projects =$scope.projects = [
-        {_id: 'test_extract_var'}
+        // {_id: 'test_extract_var'},
+        {_id: 'expr-clone-251386278'},
+        // {_id: 'expr-clone-252206906'}
 //         {_id: '254317821'}
     ];
 
