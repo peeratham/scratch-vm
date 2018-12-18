@@ -1,10 +1,81 @@
 
 var app = angular.module('loadSaveEditorApp', []);
 
-app.controller('loadSaveEditorController', async function ($scope, $http) {
+app.controller('loadSaveEditorController', async function ($scope, $http,$document) {
     let projectId = location.hash.substring(1, location.hash.length);
     $scope._id = projectId;
+    $scope.analysisParams = {
+        extract_constant : false,
+        extract_procedure : false,
+        extract_clone: false,
+        rescope_variable: false
+    };
+
+    $scope.analyze = function(){
+        console.log('TODO: populate results selection');
+        populateInstances();
+    };
+
+    $scope.keyboard = {
+        buffer: [],
+        detectCombination: function() {
+            if($document[0].activeElement.tagName!=='BODY'){
+                return;   
+            }
+            var codes = {};
+        
+            this.buffer.forEach(function(code) {
+                codes['key_' + code] = 1;
+            });
+        
+            if (codes.key_16 && codes.key_17 && codes.key_18 && codes.key_83) {
+                // Ctrl+Shift+Alt+S
+                $scope.message = 'Saved it!';
+            }
+
+            if (codes.key_16 && codes.key_17 && codes.key_65) {
+                // Ctrl+Shift+S
+                $scope.message = 'Analyze it!';
+                $scope.analyze(); 
+            }
+
+            },
+            keydown: function($event) {
+                this.buffer.push($event.keyCode);
+                this.detectCombination();
+            },
+            keyup: function($event, week) {
+                this.buffer = [];
+                $scope.message = '';
+            }
+      };
 });
+
+const populateInstances = function(){
+    const instanceSelectionDom = document.getElementById('instances');
+    const refactorableData = {
+        'extract-proc' : {'id':'extract-proc'},
+        'extract-const' : {'id':'extract-const'}
+    };
+
+    for(let instance of Object.values(refactorableData)){
+        const instanceDom = document.createElement('option');
+        instanceDom.setAttribute('value', instance.id);
+
+        instanceDom.appendChild(
+            document.createTextNode(instance.target||"" + ":" + instance.id)
+        );
+
+        instanceSelectionDom.appendChild(instanceDom);
+    }
+
+    for (let i = 0; i < instanceSelectionDom.length; i++) {
+        const instanceDom = document.createElement('option');
+        instanceDom.selectedIndex = i;
+        instanceDom.dispatchEvent(new Event('change'));
+        console.log('TODO: reformat value');
+    }
+}
 
 window.onhashchange = function () {
     location.reload();
@@ -101,6 +172,7 @@ const targetNameTextInput = document.getElementById("targetName");
 renameButton.addEventListener("click", function(){
     Scratch.vm.renameSprite(Scratch.vm.editingTarget.id, targetNameTextInput.value);
 })
+
 
 const emptySprite = (name) => ({
     objName: name,

@@ -1,9 +1,23 @@
+.main-div{
+    /* main-frame */
+
+position: relative;
+width: 98vw;
+height: 150vh;
+
+background: #FFFFFF;
+}
+
 .stage-editor-parent-div{
-    position: absolute;
-    left: 0px;
-    right: 0px;
-    top: 20vh;
-    bottom: 0px;
+/* blocks-stage-frame */
+
+position: absolute;
+left: 0px;
+right: 0px;
+top: 160px;
+bottom: 118.09px;
+
+background: #FFE5E5;
 }
 
 .editor-div{
@@ -20,4 +34,62 @@
     right: 0px;
     top: 0px;
     width: 20vw;
+}
+
+.panel-div{
+/* config-panel */
+
+position: absolute;
+height: 160px;
+left: 0px;
+right: 0px;
+top: 0px;
+
+background: #FFFFFF;
+}
+
+.top-panel-div{
+/* config-panel */
+
+position: absolute;
+height: 120px;
+left: 0px;
+right: 0px;
+top: 0px;
+
+background: #FFFFFF;
+}
+
+.top-left-panel-div{
+ /* left-subpanel */
+
+position: absolute;
+left: 0%;
+right: 50%;
+top: 50px;
+bottom: 0px;
+
+background: #BBBBBB;
+}
+
+.top-center-panel-div{
+    /* center-panel */
+
+position: absolute;
+left: 50%;
+right: 25%;
+top: 50px;
+bottom: 0px;
+
+background: #C4C4C4;
+}
+
+.top-right-panel-div{
+    position: absolute;
+    left: 75%;
+    right: 25%;
+    top: 50px;
+    bottom: 0px;
+    
+    background: #969292;    
 }

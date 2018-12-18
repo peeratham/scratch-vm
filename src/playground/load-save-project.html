@@ -2,46 +2,65 @@
 
 <html lang="en">
 <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
+
 <head>
     <meta charset="utf-8">
     <title>Project Executor</title>
     <link rel="stylesheet" href="./analysis-ui.css" type="text/css" media="screen">
 </head>
-<body ng-app="loadSaveEditorApp" ng-controller="loadSaveEditorController" class="ng-cloak">
-    <label>Project ID: <input type="text" ng-model="_id" ng-init="_id" id="projectId"/></label><button id='save'>save</button><span id="status"></span><br />
-    <div>
-        <button id='greenFlag'>Green flag</button>
-        <button id='stopAll'>Stop All</button>
-        <div>
-            <select id="selectedTarget" multiple></select>
-            <input type="text" ng-model="targetName" ng-init="targetName" id="targetName"/>
-            <button id='renameTargetButton'>Rename Target</button>
-            <button id='addTargetButton'>Add Target</button>
 
+<body ng-app="loadSaveEditorApp" ng-controller="loadSaveEditorController" class="ng-cloak" ng-keydown="keyboard.keydown($event)" ng-keyup="keyboard.keyup($event)" >
+    <div class="main-div">
+        <div class="panel-div">
+            <div class="top-panel-div">
+                <label>Project ID: <input type="text" ng-model="_id" ng-init="_id" id="projectId" /></label><button id='save'>save</button><span
+                    id="status"></span><br />
+                <button id='greenFlag'>Green flag</button>
+                <button id='stopAll'>Stop All</button>
+            </div>
+            <div class="top-left-panel-div">
+                <select id="selectedTarget" multiple></select>
+                <input type="text" ng-model="targetName" ng-init="targetName" id="targetName" />
+                <button id='renameTargetButton'>Rename Target</button>
+                <button id='addTargetButton'>Add Target</button>
+            </div>
+            <div class="top-center-panel-div">
+                <label>Extract Constant:<input type="checkbox" ng-model="analysisParams.extract_constant"></label><br/>
+                <label>Extract Procedure:<input type="checkbox" ng-model="analysisParams.extract_procedure"></label><br/>
+                <label>Extract Clone:<input type="checkbox" ng-model="analysisParams.extract_clone"></label><br/>
+                <label>Rescope Variable:<input type="checkbox" ng-model="analysisParams.rescope_variable"></label><br/>
+                <button ng-click='analyze()'>Analyze</button>
+                {{keyboard.buffer}}
+                {{message}}
+            </div>
+            <div class="top-right-panel-div">
+                <select id="instances" multiple></select>
+            </div>
+        </div>
+        <div class="stage-editor-parent-div">
+            <div class="stage-div">
+                <canvas id="scratch-stage" style="width: 100%; height: 100%;"></canvas>
+            </div>
+            <div id="blocks" style="height: 95%;" class="editor-div"></div>
         </div>
     </div>
-    <div class="stage-editor-parent-div">
-        <div class="stage-div">
-            <canvas id="scratch-stage" style="width: 100%; height: 100%;"></canvas>
-        </div>
-        <div id="blocks" style="height: 95%;" class="editor-div"></div>
-    </div>
-        <!-- FPS counter, Blocks, Renderer -->
-        <script src="./vendor.js"></script>
-        <!-- Storage module -->
-        <script src="./scratch-storage.js"></script>
-        <!-- Stage rendering -->
-        <script src="./scratch-render.js"></script>
-        <!-- SVG rendering -->
-        <script src="./scratch-svg-renderer.js"></script>
-        <!-- VM -->
-        <script src="./scratch-vm.js"></script>
-        
-        <script src="./configs.js"></script>
-        <script src="./utils-core.js"></script>
-        <script src="./scratch-setup.js"></script>
-        <script src="./executor-core.js"></script>
-        <script src="./analysis-ui.js"></script>
-        <script src="./load-save-project.js" type="text/javascript" charset="utf-8"></script>
+    <!-- FPS counter, Blocks, Renderer -->
+    <script src="./vendor.js"></script>
+    <!-- Storage module -->
+    <script src="./scratch-storage.js"></script>
+    <!-- Stage rendering -->
+    <script src="./scratch-render.js"></script>
+    <!-- SVG rendering -->
+    <script src="./scratch-svg-renderer.js"></script>
+    <!-- VM -->
+    <script src="./scratch-vm.js"></script>
+
+    <script src="./configs.js"></script>
+    <script src="./utils-core.js"></script>
+    <script src="./scratch-setup.js"></script>
+    <script src="./executor-core.js"></script>
+    <script src="./analysis-ui.js"></script>
+    <script src="./load-save-project.js" type="text/javascript" charset="utf-8"></script>
 </body>
+
 </html>
