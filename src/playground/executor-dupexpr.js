@@ -10,7 +10,7 @@ window.onhashchange = function () {
 };
 
 const sendAnalysisRequest = async function ({ projectId, analysisType, evalMode }) {
-    const url = "http://localhost:8080/discover";
+    const url = REFACTORING_SERVICE_URL;
     const xml = await getProjectXml(projectId);
 
     const analysisInfo = await fetch(url, {

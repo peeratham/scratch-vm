@@ -2,16 +2,22 @@
 var app = angular.module('loadSaveEditorApp', []);
 
 app.controller('loadSaveEditorController', async function ($scope, $http,$document) {
+    $scope.projectIds = ["Empty","254317821"];
+    $scope.selectedProjectId = $scope.projectIds[0]; 
+    
+    $scope.updateUrlHash = function(){
+        console.log('TODO: change hash:'+$scope.selectedProjectId);
+        window.location = window.location.href.replace(window.location.hash, '')+"#"+$scope.selectedProjectId;
+    }
+    
     let projectId = location.hash.substring(1, location.hash.length);
     $scope._id = projectId;
     $scope.analysisParams = {
-        extract_constant : false,
-        extract_procedure : false,
-        extract_clone: false,
-        rescope_variable: false
+        name : "extract-const"
     };
 
     $scope.analyze = function(){
+        console.log('TODO: send request for '+$scope.analysisParams.name);
         console.log('TODO: populate results selection');
         populateInstances();
     };
@@ -34,7 +40,7 @@ app.controller('loadSaveEditorController', async function ($scope, $http,$docume
             }
 
             if (codes.key_16 && codes.key_17 && codes.key_65) {
-                // Ctrl+Shift+S
+                // Ctrl+Shift+A
                 $scope.message = 'Analyze it!';
                 $scope.analyze(); 
             }
@@ -58,14 +64,16 @@ const populateInstances = function(){
         'extract-const' : {'id':'extract-const'}
     };
 
+    while (instanceSelectionDom.firstChild) { //clear
+        instanceSelectionDom.removeChild(instanceSelectionDom.firstChild);
+    }
+
     for(let instance of Object.values(refactorableData)){
         const instanceDom = document.createElement('option');
         instanceDom.setAttribute('value', instance.id);
-
         instanceDom.appendChild(
             document.createTextNode(instance.target||"" + ":" + instance.id)
         );
-
         instanceSelectionDom.appendChild(instanceDom);
     }
 

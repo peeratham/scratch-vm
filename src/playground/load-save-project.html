@@ -13,10 +13,13 @@
     <div class="main-div">
         <div class="panel-div">
             <div class="top-panel-div">
+                <select  ng-model="selectedProjectId" ng-options="_id for _id in projectIds" ng-change="updateUrlHash()"></select>
                 <label>Project ID: <input type="text" ng-model="_id" ng-init="_id" id="projectId" /></label><button id='save'>save</button><span
                     id="status"></span><br />
                 <button id='greenFlag'>Green flag</button>
                 <button id='stopAll'>Stop All</button>
+                <!-- {{keyboard.buffer}} -->
+                {{message}}
             </div>
             <div class="top-left-panel-div">
                 <select id="selectedTarget" multiple></select>
@@ -25,13 +28,11 @@
                 <button id='addTargetButton'>Add Target</button>
             </div>
             <div class="top-center-panel-div">
-                <label>Extract Constant:<input type="checkbox" ng-model="analysisParams.extract_constant"></label><br/>
-                <label>Extract Procedure:<input type="checkbox" ng-model="analysisParams.extract_procedure"></label><br/>
-                <label>Extract Clone:<input type="checkbox" ng-model="analysisParams.extract_clone"></label><br/>
-                <label>Rescope Variable:<input type="checkbox" ng-model="analysisParams.rescope_variable"></label><br/>
+                <label>Extract Constant:<input type="radio" ng-model="analysisParams.name" value="extract_constant"></label><br/>
+                <label>Extract Procedure:<input type="radio" ng-model="analysisParams.name" value="extract_procedure"></label><br/>
+                <label>Extract Clone:<input type="radio" ng-model="analysisParams.name" value="extract_clone"></label><br/>
+                <label>Rescope Variable:<input type="radio" ng-model="analysisParams.name" value="rescope_variable"></label><br/>
                 <button ng-click='analyze()'>Analyze</button>
-                {{keyboard.buffer}}
-                {{message}}
             </div>
             <div class="top-right-panel-div">
                 <select id="instances" multiple></select>
