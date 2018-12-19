@@ -13,12 +13,19 @@ app.controller('loadSaveEditorController', async function ($scope, $http,$docume
     let projectId = location.hash.substring(1, location.hash.length);
     $scope._id = projectId;
     $scope.analysisParams = {
-        name : "extract-const"
+        name : "broad_variable_scope"
     };
 
-    $scope.analyze = function(){
+    $scope.analyze = async function(){
         console.log('TODO: send request for '+$scope.analysisParams.name);
         console.log('TODO: populate results selection');
+        let projectXml = await getProjectXml(projectId);
+        console.log('TODO: getAnalysisInfo from improvement discovery url');
+        let analysisInfo = await getAnalysisInfo({
+            projectId, projectXml,
+            analysisType: $scope.analysisParams.name, evalMode: false
+        });
+        console.log(JSON.stringify(analysisInfo));
         populateInstances();
     };
 
@@ -43,6 +50,10 @@ app.controller('loadSaveEditorController', async function ($scope, $http,$docume
                 // Ctrl+Shift+A
                 $scope.message = 'Analyze it!';
                 $scope.analyze(); 
+            }
+
+            if (codes.key_17 && codes.key_16 && codes.key_190){
+                console.log("apply next refactoring");
             }
 
             },
