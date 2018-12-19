@@ -13,13 +13,23 @@ app.controller('loadSaveEditorController', async function ($scope, $http,$docume
     let projectId = location.hash.substring(1, location.hash.length);
     $scope._id = projectId;
     $scope.analysisParams = {
-        name : "extract-const"
+        name : "broad_variable_scope"
     };
 
-    $scope.analyze = function(){
+    $scope.analyze = async function(){
         console.log('TODO: send request for '+$scope.analysisParams.name);
         console.log('TODO: populate results selection');
-        populateInstances();
+        let projectXml = await getProjectXml(projectId);
+        console.log('TODO: getAnalysisInfo from improvement discovery url');
+        let analysisInfo = await getAnalysisInfo({
+            projectId, projectXml,
+            analysisType: $scope.analysisParams.name, evalMode: false
+        });
+        console.log(JSON.stringify(analysisInfo));
+
+        console.log('TODO: generateInstanceList');
+        const instanceSelectionDom = document.getElementById('instances');
+        generateInstanceOptionDom(instanceSelectionDom, analysisInfo['instances'], createOnChangeCallback);
     };
 
     $scope.keyboard = {
@@ -45,6 +55,10 @@ app.controller('loadSaveEditorController', async function ($scope, $http,$docume
                 $scope.analyze(); 
             }
 
+            if (codes.key_17 && codes.key_16 && codes.key_190){
+                console.log("apply next refactoring");
+            }
+
             },
             keydown: function($event) {
                 this.buffer.push($event.keyCode);
@@ -57,33 +71,11 @@ app.controller('loadSaveEditorController', async function ($scope, $http,$docume
       };
 });
 
-const populateInstances = function(){
-    const instanceSelectionDom = document.getElementById('instances');
-    const refactorableData = {
-        'extract-proc' : {'id':'extract-proc'},
-        'extract-const' : {'id':'extract-const'}
+const createOnChangeCallback = function(refactorableData, instanceSelectionDom){
+    return async () => {
+       console.log('TODO: apply transformation actions');
     };
-
-    while (instanceSelectionDom.firstChild) { //clear
-        instanceSelectionDom.removeChild(instanceSelectionDom.firstChild);
-    }
-
-    for(let instance of Object.values(refactorableData)){
-        const instanceDom = document.createElement('option');
-        instanceDom.setAttribute('value', instance.id);
-        instanceDom.appendChild(
-            document.createTextNode(instance.target||"" + ":" + instance.id)
-        );
-        instanceSelectionDom.appendChild(instanceDom);
-    }
-
-    for (let i = 0; i < instanceSelectionDom.length; i++) {
-        const instanceDom = document.createElement('option');
-        instanceDom.selectedIndex = i;
-        instanceDom.dispatchEvent(new Event('change'));
-        console.log('TODO: reformat value');
-    }
-}
+};
 
 window.onhashchange = function () {
     location.reload();
