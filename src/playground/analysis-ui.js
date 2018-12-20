@@ -25,8 +25,6 @@ const setupAnalysisUI = ({ vm }) => {
         await vm.setEditingTarget(this.value);
         Blockly.Events.recordUndo = true;
     };
-
-    console.log('TODO: add instance list');
 }
 
 // =====ANALYSIS UI UTILS=============

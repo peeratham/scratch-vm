@@ -1,23 +1,23 @@
 
 var app = angular.module('loadSaveEditorApp', []);
 
-app.controller('loadSaveEditorController', async function ($scope, $http,$document) {
-    $scope.projectIds = ["Empty","254317821"];
-    $scope.selectedProjectId = $scope.projectIds[0]; 
-    
-    $scope.updateUrlHash = function(){
-        console.log('TODO: change hash:'+$scope.selectedProjectId);
-        window.location = window.location.href.replace(window.location.hash, '')+"#"+$scope.selectedProjectId;
+app.controller('loadSaveEditorController', async function ($scope, $http, $document) {
+    $scope.projectIds = ["Empty", "254317821"];
+    $scope.selectedProjectId = $scope.projectIds[0];
+
+    $scope.updateUrlHash = function () {
+        console.log('TODO: change hash:' + $scope.selectedProjectId);
+        window.location = window.location.href.replace(window.location.hash, '') + "#" + $scope.selectedProjectId;
     }
-    
+
     let projectId = location.hash.substring(1, location.hash.length);
     $scope._id = projectId;
     $scope.analysisParams = {
-        name : "broad_variable_scope"
+        name: "broad_variable_scope"
     };
 
-    $scope.analyze = async function(){
-        console.log('TODO: send request for '+$scope.analysisParams.name);
+    $scope.analyze = async function () {
+        console.log('TODO: send request for ' + $scope.analysisParams.name);
         console.log('TODO: populate results selection');
         let projectXml = await getProjectXml(projectId);
         console.log('TODO: getAnalysisInfo from improvement discovery url');
@@ -26,24 +26,22 @@ app.controller('loadSaveEditorController', async function ($scope, $http,$docume
             analysisType: $scope.analysisParams.name, evalMode: false
         });
         console.log(JSON.stringify(analysisInfo));
-
-        console.log('TODO: generateInstanceList');
         const instanceSelectionDom = document.getElementById('instances');
         generateInstanceOptionDom(instanceSelectionDom, analysisInfo['instances'], createOnChangeCallback);
     };
 
     $scope.keyboard = {
         buffer: [],
-        detectCombination: function() {
-            if($document[0].activeElement.tagName!=='BODY'){
-                return;   
+        detectCombination: function () {
+            if ($document[0].activeElement.tagName !== 'BODY') {
+                return;
             }
             var codes = {};
-        
-            this.buffer.forEach(function(code) {
+
+            this.buffer.forEach(function (code) {
                 codes['key_' + code] = 1;
             });
-        
+
             if (codes.key_16 && codes.key_17 && codes.key_18 && codes.key_83) {
                 // Ctrl+Shift+Alt+S
                 $scope.message = 'Saved it!';
@@ -52,28 +50,37 @@ app.controller('loadSaveEditorController', async function ($scope, $http,$docume
             if (codes.key_16 && codes.key_17 && codes.key_65) {
                 // Ctrl+Shift+A
                 $scope.message = 'Analyze it!';
-                $scope.analyze(); 
+                $scope.analyze();
             }
 
-            if (codes.key_17 && codes.key_16 && codes.key_190){
-                console.log("apply next refactoring");
+            if (codes.key_17 && codes.key_16 && codes.key_190) {
+                const instanceSelectionDom = document.getElementById('instances');
+                selectNextInstance(instanceSelectionDom);
             }
 
-            },
-            keydown: function($event) {
-                this.buffer.push($event.keyCode);
-                this.detectCombination();
-            },
-            keyup: function($event, week) {
-                this.buffer = [];
-                $scope.message = '';
-            }
-      };
+        },
+        keydown: function ($event) {
+            this.buffer.push($event.keyCode);
+            this.detectCombination();
+        },
+        keyup: function ($event, week) {
+            this.buffer = [];
+            $scope.message = '';
+        }
+    };
 });
 
-const createOnChangeCallback = function(refactorableData, instanceSelectionDom){
+const selectNextInstance = function (instanceSelectionDom) {
+    if (instanceSelectionDom.length > 0) {
+        instanceSelectionDom.selectedIndex++;
+        instanceSelectionDom.dispatchEvent(new Event('change'));
+    }
+}
+
+const createOnChangeCallback = function (refactorableData, instanceSelectionDom) {
     return async () => {
-       console.log('TODO: apply transformation actions');
+        let refactorable = refactorableData[instanceSelectionDom.value];
+        console.log('TODO: apply transformation actions:' + JSON.stringify(refactorable));
     };
 };
 
@@ -119,24 +126,24 @@ window.onload = async function () {
     const projectIdTextInput = document.getElementById("projectId");
     let projectId = projectIdTextInput.value;
     let dataStat = await fetch(`http://localhost:3000/data/${projectId}`).then(res => res.json());
-    configureProjectResourceUrl({LOCAL_ASSET:dataStat.project_dir_exists});
-    
-//     let wsReadyCallback = createUploadTask(projectId, function () { updateStatus(projectId, 'DATA', 'COMPLETE') });
+    configureProjectResourceUrl({ LOCAL_ASSET: dataStat.project_dir_exists });
+
+    //     let wsReadyCallback = createUploadTask(projectId, function () { updateStatus(projectId, 'DATA', 'COMPLETE') });
     const vm = new window.VirtualMachine();
     setupAnalysisUI({ vm });
     loadProjectAndRunTask({
         providedVM: vm,
         projectId,
-        wsReadyCallback: ()=>{},
-        requiredAnalysisUi:false
+        wsReadyCallback: () => { },
+        requiredAnalysisUi: false
     });
 };
 
 const saveButton = document.getElementById("save");
-saveButton.addEventListener("click", function(){
+saveButton.addEventListener("click", function () {
     const projectIdTextInput = document.getElementById("projectId");
     let projectId = projectIdTextInput.value;
-    createUploadTask(projectId, function () { 
+    createUploadTask(projectId, function () {
         const statusDom = document.getElementById("status");
         statusDom.innerText = "Project Saved!";
     })();
@@ -144,24 +151,24 @@ saveButton.addEventListener("click", function(){
 
 
 const greenFlagButton = document.getElementById("greenFlag");
-greenFlagButton.addEventListener("click", function(){
+greenFlagButton.addEventListener("click", function () {
     Scratch.vm.start();
     Scratch.vm.greenFlag();
 });
 
 const stopAllButton = document.getElementById("stopAll");
-stopAllButton.addEventListener("click", function(){
+stopAllButton.addEventListener("click", function () {
     Scratch.vm.stopAll();
     clearTimeout(Scratch.vm.runtime._steppingInterval);
 });
 
 const addTargetButton = document.getElementById("addTargetButton");
-addTargetButton.addEventListener("click", function(){
+addTargetButton.addEventListener("click", function () {
     // Scratch.vm
     console.log('TODO: add target');
     let emptyItem = emptySprite("New sprite");
     Scratch.vm.addSprite(JSON.stringify(emptyItem)).then(() => {
-        setTimeout(() => { 
+        setTimeout(() => {
             //things to do after switch to a new target
         });
     });
@@ -169,7 +176,7 @@ addTargetButton.addEventListener("click", function(){
 
 const renameButton = document.getElementById("renameTargetButton");
 const targetNameTextInput = document.getElementById("targetName");
-renameButton.addEventListener("click", function(){
+renameButton.addEventListener("click", function () {
     Scratch.vm.renameSprite(Scratch.vm.editingTarget.id, targetNameTextInput.value);
 })
 
