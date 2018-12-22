@@ -36,14 +36,24 @@
                 <button ng-click='analyze()'>Analyze</button>
             </div>
             <div class="top-right-panel-div">
-                <select id="instances" multiple></select>
+              
             </div>
         </div>
-        <div class="stage-editor-parent-div">
-            <div class="stage-div">
+        <div class="main-panel">
+            <div class="transforms-panel">
+                <div class="refactorings">
+                    <label>Instances:<br>
+                        <select id="instances" multiple></select><br>
+                    </label>
+                    <label>Actions:<br>
+                        <select id="actions" multiple></select>
+                    </label>
+                </div>
+            </div>
+            <div class="stage">
                 <canvas id="scratch-stage" style="width: 100%; height: 100%;"></canvas>
             </div>
-            <div id="blocks" style="height: 95%;" class="editor-div"></div>
+            <div id="blocks" style="height: 95%;" class="editor"></div>
         </div>
     </div>
     <!-- FPS counter, Blocks, Renderer -->
