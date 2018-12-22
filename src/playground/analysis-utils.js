@@ -37,9 +37,7 @@ const formatResult = function ({ projectId, analysisResult }) {
 
 const getAnalysisInfo = async function ({ projectId, projectXml, analysisType, evalMode }) {
     let analysisResult = await sendAnalysisRequest({ projectId, projectXml, analysisType, evalMode });
-    console.log(JSON.stringify(analysisResult));
     let formatted = formatResult({ projectId, analysisResult });
-
     return formatted;
 }
 
@@ -61,6 +59,40 @@ const generateInstanceOptionDom = async function(selectionDom, keyValueData, onO
     }
     selectionDom.onchange = onOptionChageCallBackCreator(keyValueData, selectionDom);
 };
+
+const populateActions = function(refactorable){
+   
+    let actionSelectionDom = document.getElementById('actions');
+    while (actionSelectionDom.firstChild) { //clear
+        actionSelectionDom.removeChild(actionSelectionDom.firstChild);
+    }
+
+    for(let actionIdx=0; actionIdx < refactorable.transforms.length; actionIdx++){
+        let action = refactorable.transforms[actionIdx];
+        const changeItem = document.createElement('option');
+        changeItem.setAttribute('value', actionIdx);
+        changeItem.appendChild(document.createTextNode(action.type));
+        actionSelectionDom.appendChild(changeItem);
+    }
+
+    actionSelectionDom.onchange = async function() {
+        console.log('TODO: undo previous transformation first');
+
+        let actionIdx = this.value;
+        let action = refactorable.transforms[actionIdx];
+        console.log('TODO: apply transformation actions:' + JSON.stringify(action));
+        try {
+            await Scratch.workspace.blockTransformer.executeAction(action);
+            //synchronous for now to make sure vm update its internal representation correclty in sequence of the applied transformation
+            await Blockly.Events.fireNow_();
+        } catch (err) {
+            console.log("Failed transformation:" + JSON.stringify(action));
+            throw err;
+        }
+        
+    }
+
+}
 
 const populateWalkThru = function(improvable){
     // populate changes walk through

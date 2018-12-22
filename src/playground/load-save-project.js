@@ -17,15 +17,11 @@ app.controller('loadSaveEditorController', async function ($scope, $http, $docum
     };
 
     $scope.analyze = async function () {
-        console.log('TODO: send request for ' + $scope.analysisParams.name);
-        console.log('TODO: populate results selection');
         let projectXml = await getProjectXml(projectId);
-        console.log('TODO: getAnalysisInfo from improvement discovery url');
         let analysisInfo = await getAnalysisInfo({
             projectId, projectXml,
             analysisType: $scope.analysisParams.name, evalMode: false
         });
-        console.log(JSON.stringify(analysisInfo));
         const instanceSelectionDom = document.getElementById('instances');
         generateInstanceOptionDom(instanceSelectionDom, analysisInfo['instances'], createOnChangeCallback);
     };
@@ -80,7 +76,7 @@ const selectNextInstance = function (instanceSelectionDom) {
 const createOnChangeCallback = function (refactorableData, instanceSelectionDom) {
     return async () => {
         let refactorable = refactorableData[instanceSelectionDom.value];
-        console.log('TODO: apply transformation actions:' + JSON.stringify(refactorable));
+        populateActions(refactorable);
     };
 };
 
