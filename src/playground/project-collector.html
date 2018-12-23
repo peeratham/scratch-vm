@@ -1,0 +1,26 @@
+<!doctype html>
+
+<html lang="en">
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
+<head>
+    <meta charset="utf-8">
+    <title>Scratch Project Collector</title>
+    <link rel="stylesheet" href="./suite.css" type="text/css" media="screen">
+    
+</head>
+<body>
+    <div ng-app="projectCollectorApp" ng-controller="collectProjectTaskController" class="ng-cloak">
+        <h1>Projects</h1>
+        <div>
+            #Projects: {{projects.length}}
+        </div>
+        <div ng-repeat="p in projects">
+            {{p.id}} | {{p.title}} | TODO:status on db
+        </div>
+        
+
+    </div>
+    <script src="./scratch-vm.js"></script>
+    <script src="./project-collector.js" type="text/javascript" charset="utf-8"></script>
+</body>
+</html>

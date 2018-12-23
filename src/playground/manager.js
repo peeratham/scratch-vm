@@ -1,3 +1,11 @@
+const isTest = false;
+var testProjects = [
+    // {_id: 'test_extract_var'},
+    // {_id: 'expr-clone-251386278'},
+    // {_id: 'expr-clone-252206906'}
+    { _id: '254317821' }
+];
+
 var app = angular.module('myApp', []);
 
 app.controller('analysisTaskController', async function ($scope, $http) {
@@ -5,7 +13,7 @@ app.controller('analysisTaskController', async function ($scope, $http) {
     $scope.projectDataStatuses = {};
     //add analysis-infos model/get remaining and updater
     $scope.analysisInfos = {
-        coverage : {},
+        coverage: {},
         dupexpr: {}
     };
 
@@ -21,23 +29,23 @@ app.controller('analysisTaskController', async function ($scope, $http) {
         await $http({
             method: "GET",
             url: `${ANALYSIS_INFO_SERVICE_URL}/${analysis_name}/${id}`
-        }).then(resp => $scope.analysisInfos[analysis_name][id] = resp.data, 
-                err => {console.log(err);}
+        }).then(resp => $scope.analysisInfos[analysis_name][id] = resp.data,
+            err => { console.log(err); }
         );
 
-        $scope.remainingTasks.coverage = filterIdsForAnalysisTask({analysisName:'coverage'}).length;
+        $scope.remainingTasks.coverage = filterIdsForAnalysisTask({ analysisName: 'coverage' }).length;
     }
 
-    const getMissingData = function(id){
+    const getMissingData = function (id) {
         let res = $scope.projectDataStatuses[id];
-        let missing = Object.entries(res).filter(([key, value]) => value===false).map(([key,value]) => key);
+        let missing = Object.entries(res).filter(([key, value]) => value === false).map(([key, value]) => key);
         return missing;
     }
 
     $scope.getDataStatusStr = function (id) {
         if ($scope.projectDataStatuses[id]) {
             let missing = getMissingData(id);
-            return missing.length ===0 ? "complete" : "incomplete ("+missing+")";
+            return missing.length === 0 ? "complete" : "incomplete (" + missing + ")";
         }
         return "";
     }
@@ -52,26 +60,22 @@ app.controller('analysisTaskController', async function ($scope, $http) {
     }
 
     let projects;
-    // projects = $scope.projects = await $http({
-    //     method: "GET",
-    //     url: PROJECT_SERVICE_URL
-    // }).then(resp => resp.data);
 
-    //test
-    console.log('TODO: change back to get project list from db');
-    projects =$scope.projects = [
-        // {_id: 'test_extract_var'},
-        // {_id: 'expr-clone-251386278'},
-        // {_id: 'expr-clone-252206906'}
-        {_id: '254317821'}
-    ];
+    if (isTest) {
+        projects = $scope.projects = testProjects;
+    } else {
+        projects = $scope.projects = await $http({
+            method: "GET",
+            url: PROJECT_SERVICE_URL
+        }).then(resp => resp.data);
+    }
 
     const getId2Entries = async function (projects, remoteServiceURL) {
         return (await Promise.all(projects.map(p =>
             $http({
                 method: "GET",
                 url: `${remoteServiceURL}/${p._id}`
-            }).then(resp => resp.data, err=> {_id:p._id})
+            }).then(resp => resp.data, err => { _id: p._id })
         ))).reduce((obj, item) => {
             if (item) { //ignore if undefined (data for the projectId not exists)
                 obj[item._id] = item;
@@ -81,41 +85,39 @@ app.controller('analysisTaskController', async function ($scope, $http) {
     };
     // retrieving remote data
     let projectDataStatuses = $scope.projectDataStatuses = await getId2Entries(projects, PROJECT_DATA_SERVICE_URL);
-    
+
     let analysisInfos = $scope.analysisInfos = {
-        coverage : await getId2Entries(projects, COVERAGE_INFO_SERVICE_URL),
-        dupexpr : await getId2Entries(projects, DUPEXPR_INFO_SERVICE_URL)
+        coverage: await getId2Entries(projects, COVERAGE_INFO_SERVICE_URL),
+        dupexpr: await getId2Entries(projects, DUPEXPR_INFO_SERVICE_URL)
     };
 
 
-    const getRemainingIdsForDataTask = () => projects.filter(p => getMissingData(p._id).length > 0).map(p => p._id);    
+    const getRemainingIdsForDataTask = () => projects.filter(p => getMissingData(p._id).length > 0).map(p => p._id);
 
-    const filterIdsForAnalysisTask = ({analysisName, reanalyzeAll=false}) => {
-        if(reanalyzeAll === true){
+    const filterIdsForAnalysisTask = ({ analysisName, reanalyzeAll = false }) => {
+        if (reanalyzeAll === true) {
             return projects.map(p => p.id);
         }
 
-        if(analysisName==='coverage'){
+        if (analysisName === 'coverage') {
             return projects.filter(p => analysisInfos.coverage[p._id] === undefined || analysisInfos.coverage[p._id]['info']['green_flag_coverage'] === undefined).map(p => p._id);
         }
-        else if(analysisName==='dupexpr'){
+        else if (analysisName === 'dupexpr') {
             return projects.filter(p => analysisInfos.dupexpr[p._id] === undefined || analysisInfos.coverage[p._id]['info']['green_flag_coverage'] === undefined).map(p => p._id);
-//             return ['test-blocking'];
+            //             return ['test-blocking'];
         }
         else {
-            throw new Exception("Unknown analysis: "+analysisName);
+            throw new Exception("Unknown analysis: " + analysisName);
         }
     };
 
 
     $scope.remainingTasks = {
         data: getRemainingIdsForDataTask().length,
-        coverage: filterIdsForAnalysisTask({analysisName:'coverage'}).length
+        coverage: filterIdsForAnalysisTask({ analysisName: 'coverage' }).length
     };
 
-
     $scope.$apply();
-
 
     const frame = document.getElementsByTagName('iframe')[0];
     window.addEventListener("message", async function (message) {
@@ -130,16 +132,16 @@ app.controller('analysisTaskController', async function ($scope, $http) {
                 if ($scope.remainingTasks.data > 0) {
                     let nextProjectId = getRemainingIdsForDataTask()[0];
                     frame.contentWindow.location.assign(`executor-data.html#${nextProjectId}`);
-                } else if($scope.remainingTasks.coverage > 0) {
+                } else if ($scope.remainingTasks.coverage > 0) {
                     //coverage next
-                    let nextProjectId = filterIdsForAnalysisTask({analysisName:'coverage'})[0];
+                    let nextProjectId = filterIdsForAnalysisTask({ analysisName: 'coverage' })[0];
                     frame.contentWindow.location.assign(`executor-coverage.html#${nextProjectId}`);
                 }
             }
         }
 
         if (task === 'COVERAGE') {
-            let remaining = filterIdsForAnalysisTask({analysisName:'coverage'});
+            let remaining = filterIdsForAnalysisTask({ analysisName: 'coverage' });
             if (status === "START" && remaining.length > 0) {
                 let nextProjectId = remaining[0];
                 frame.contentWindow.location.assign(`executor-coverage.html#${nextProjectId}`);
@@ -154,8 +156,8 @@ app.controller('analysisTaskController', async function ($scope, $http) {
         }
 
         if (task === 'DUPEXPR') {
-            let remaining = filterIdsForAnalysisTask({analysisName:'dupexpr'});
-            if (status === "START" && remaining.length > 0){
+            let remaining = filterIdsForAnalysisTask({ analysisName: 'dupexpr' });
+            if (status === "START" && remaining.length > 0) {
                 let nextProjectId = remaining[0];
                 frame.contentWindow.location.assign(`executor-dupexpr.html#${nextProjectId}`);
             } else if (status === "COMPLETE") {
@@ -178,12 +180,12 @@ app.controller('analysisTaskController', async function ($scope, $http) {
             task: 'DATA',
             status: 'START'
         }, '*');
-    } else if (filterIdsForAnalysisTask({analysisName:'coverage'}).length > 0) {
+    } else if (filterIdsForAnalysisTask({ analysisName: 'coverage' }).length > 0) {
         window.parent.postMessage({
             task: 'COVERAGE',
             status: 'START'
         }, '*');
-    } else if (filterIdsForAnalysisTask({analysisName:'dupexpr'}).length > 0) {
+    } else if (filterIdsForAnalysisTask({ analysisName: 'dupexpr' }).length > 0) {
         window.parent.postMessage({
             task: 'DUPEXPR',
             status: 'START'
