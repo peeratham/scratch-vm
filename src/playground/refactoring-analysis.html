@@ -1,0 +1,46 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Project Executor</title>
+  <link rel="stylesheet" href="./analysis-ui-eval.css" type="text/css" media="screen">
+</head>
+<body>
+    <h3 id=analysisType></h3>
+    <b>Project ID</b>: <span id="projectId"></span><br />
+    <div>
+      <div class='top-control'>
+        <div class='inline'>targets</br><select id="selectedTarget" multiple></select></div>
+        <div class='inline'>smells</br><select id="instances" multiple></select></div>
+        <div class='inline'>transforms</br><select id="changesWalkThrough" multiple></select></div>
+      </div>
+      <div class="stage-editor-parent-div">
+        <div class="stage-div">
+            <canvas id="scratch-stage" style="width: 100%; height: 100%;"></canvas>
+        </div>
+        <div id="blocks" style="height: 95%; width: 80vw;" class="editor-div"></div>
+    </div>
+    </div>
+    <!-- <div id="blocks" style="height: 500px; width: 100%pvp;"></div> -->
+
+        <!-- FPS counter, Blocks, Renderer -->
+        <script src="./vendor.js"></script>
+        <!-- Storage module -->
+        <script src="./scratch-storage.js"></script>
+        <!-- Stage rendering -->
+        <script src="./scratch-render.js"></script>
+        <!-- SVG rendering -->
+        <script src="./scratch-svg-renderer.js"></script>
+        <!-- VM -->
+        <script src="./scratch-vm.js"></script>
+        <script src="./configs.js"></script>
+        <script src="./utils-core.js"></script>
+        <script src="./scratch-setup.js"></script>
+        <script src="./executor-core.js"></script>
+        <script src="./profiler-run.js"></script>
+        <script src="./analysis-ui.js"></script>
+        <script src="./analysis-utils.js"></script>
+        <script src="./refactoring-analysis.js" type="text/javascript" charset="utf-8"></script>
+</body>
+</html>

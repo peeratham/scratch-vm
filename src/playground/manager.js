@@ -1,9 +1,11 @@
-const isTest = false;
+const isTest = true;
 var testProjects = [
     // {_id: 'test_extract_var'},
     // {_id: 'expr-clone-251386278'},
     // {_id: 'expr-clone-252206906'}
-    { _id: '254317821' }
+    // { _id: '254317821' }
+    { _id: '272302956' },
+    { _id: '265577662' }
 ];
 
 var app = angular.module('myApp', []);
@@ -13,6 +15,7 @@ app.controller('analysisTaskController', async function ($scope, $http) {
     $scope.projectDataStatuses = {};
     //add analysis-infos model/get remaining and updater
     $scope.analysisInfos = {
+        metrics: {},
         coverage: {},
         dupexpr: {}
     };
@@ -29,11 +32,13 @@ app.controller('analysisTaskController', async function ($scope, $http) {
         await $http({
             method: "GET",
             url: `${ANALYSIS_INFO_SERVICE_URL}/${analysis_name}/${id}`
-        }).then(resp => $scope.analysisInfos[analysis_name][id] = resp.data,
+        }).then(resp => {
+            $scope.analysisInfos[analysis_name][id] = resp.data;
+            $scope.remainingTasks[analysis_name] = filterIdsForAnalysisTask({ analysisName: analysis_name }).length;
+            console.log('TODO: update remainingIds');
+        },
             err => { console.log(err); }
         );
-
-        $scope.remainingTasks.coverage = filterIdsForAnalysisTask({ analysisName: 'coverage' }).length;
     }
 
     const getMissingData = function (id) {
@@ -87,16 +92,21 @@ app.controller('analysisTaskController', async function ($scope, $http) {
     let projectDataStatuses = $scope.projectDataStatuses = await getId2Entries(projects, PROJECT_DATA_SERVICE_URL);
 
     let analysisInfos = $scope.analysisInfos = {
+        metrics: await getId2Entries(projects, METRICS_INFO_SERVICE_URL),
         coverage: await getId2Entries(projects, COVERAGE_INFO_SERVICE_URL),
         dupexpr: await getId2Entries(projects, DUPEXPR_INFO_SERVICE_URL)
     };
 
 
-    const getRemainingIdsForDataTask = () => projects.filter(p => getMissingData(p._id).length > 0).map(p => p._id);
+    const getRemainingIdsForDataTask = async () => projects.filter(p => getMissingData(p._id).length > 0).map(p => p._id);
 
     const filterIdsForAnalysisTask = ({ analysisName, reanalyzeAll = false }) => {
         if (reanalyzeAll === true) {
             return projects.map(p => p.id);
+        }
+
+        if (analysisName === 'metrics') {
+            return projects.filter(p => analysisInfos.metrics[p._id] === undefined).map(p => p._id);
         }
 
         if (analysisName === 'coverage') {
@@ -140,14 +150,37 @@ app.controller('analysisTaskController', async function ($scope, $http) {
             }
         }
 
+        if (task === 'METRICS') {
+            let remaining = filterIdsForAnalysisTask({ analysisName: 'metrics' });
+            console.log('remaining metrics tasks:' + remaining);
+            if (status === "START" && remaining.length > 0) {
+                let nextProjectId = remaining[0];
+                frame.contentWindow.location.assign(`executor-metrics.html#${nextProjectId}`);
+            } else if (status === "COMPLETE") {
+                console.log('metrics complete for' + project_id);
+                await $scope.updateAnalysisInfo(project_id, 'metrics');
+                $scope.$apply();
+                remaining = filterIdsForAnalysisTask({ analysisName: 'metrics' }); //update remaining
+                console.log('remaining task' + $scope.remainingTasks.metrics);
+                if ($scope.remainingTasks.metrics > 0) {
+                    let nextProjectId = remaining[0];
+                    frame.contentWindow.location.assign(`executor-metrics.html#${nextProjectId}`);
+                }
+            }
+        }
+
         if (task === 'COVERAGE') {
             let remaining = filterIdsForAnalysisTask({ analysisName: 'coverage' });
+            console.log('remaining coverage tasks:' + remaining);
             if (status === "START" && remaining.length > 0) {
                 let nextProjectId = remaining[0];
                 frame.contentWindow.location.assign(`executor-coverage.html#${nextProjectId}`);
             } else if (status === "COMPLETE") {
+                console.log('coverage complete for' + project_id);
                 await $scope.updateAnalysisInfo(project_id, 'coverage');
                 $scope.$apply();
+                remaining = filterIdsForAnalysisTask({ analysisName: 'coverage' }); //update remaining
+                console.log('remaining task' + $scope.remainingTasks.coverage);
                 if ($scope.remainingTasks.coverage > 0) {
                     let nextProjectId = remaining[0];
                     frame.contentWindow.location.assign(`executor-coverage.html#${nextProjectId}`);
@@ -178,6 +211,11 @@ app.controller('analysisTaskController', async function ($scope, $http) {
     if (getRemainingIdsForDataTask().length > 0) {
         window.parent.postMessage({
             task: 'DATA',
+            status: 'START'
+        }, '*');
+    } else if (filterIdsForAnalysisTask({ analysisName: 'metrics' }).length > 0) {
+        window.parent.postMessage({
+            task: 'METRICS',
             status: 'START'
         }, '*');
     } else if (filterIdsForAnalysisTask({ analysisName: 'coverage' }).length > 0) {

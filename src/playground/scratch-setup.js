@@ -1,6 +1,3 @@
-const Scratch = window.Scratch = window.Scratch || {};
-const Project = window.Project = window.Project || {};
-
 window.onload = function () {
     if (location.hash.substring(1).startsWith('view')) {
         document.body.className = 'render';

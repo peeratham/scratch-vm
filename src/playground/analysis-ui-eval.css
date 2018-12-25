@@ -93,3 +93,28 @@ background: #C4C4C4;
     
     background: #969292;    
 }
+
+
+.top-controls{
+position: absolute;
+height: 110px;
+left: 0px;
+right: 0px;
+top: 50px;
+
+background: #DEEFF2;
+}
+
+.target{   
+    position: absolute;
+    width: 220px;
+    height: 110px;
+    left: 0px;
+    top: 50px;
+    background: #FFFFFF;
+}
+
+div.inline { 
+    float:left;
+    padding-right: 3em 
+}

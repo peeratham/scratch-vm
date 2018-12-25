@@ -35,10 +35,15 @@ const formatResult = function ({ projectId, analysisResult }) {
     return result;
 }
 
-const getAnalysisInfo = async function ({ projectId, projectXml, analysisType, evalMode }) {
-    let analysisResult = await sendAnalysisRequest({ projectId, projectXml, analysisType, evalMode });
+const getAnalysisInfo = async function ({ projectId, analysisType, evalMode }) {
+    let analysisResult = await sendAnalysisRequest({ projectId, analysisType, evalMode });
+    if (analysisResult.error) {
+        throw analysisResult.error;
+    }
+
     let formatted = formatResult({ projectId, analysisResult });
     return formatted;
+
 }
 
 const getProjectXml = async function (id) {
@@ -46,8 +51,8 @@ const getProjectXml = async function (id) {
     return xml;
 };
 
-const generateInstanceOptionDom = async function(selectionDom, keyValueData, onOptionChageCallBackCreator){
-    for(let valueObj of Object.values(keyValueData)){
+const generateInstanceOptionDom = async function (selectionDom, keyValueData, onOptionChageCallBackCreator) {
+    for (let valueObj of Object.values(keyValueData)) {
         const refactorable = document.createElement('option');
         refactorable.setAttribute('value', valueObj.id);
 
@@ -60,14 +65,14 @@ const generateInstanceOptionDom = async function(selectionDom, keyValueData, onO
     selectionDom.onchange = onOptionChageCallBackCreator(keyValueData, selectionDom);
 };
 
-const populateActions = function(refactorable){
-   
+const populateActions = function (refactorable) {
+
     let actionSelectionDom = document.getElementById('actions');
     while (actionSelectionDom.firstChild) { //clear
         actionSelectionDom.removeChild(actionSelectionDom.firstChild);
     }
 
-    for(let actionIdx=0; actionIdx < refactorable.transforms.length; actionIdx++){
+    for (let actionIdx = 0; actionIdx < refactorable.transforms.length; actionIdx++) {
         let action = refactorable.transforms[actionIdx];
         const changeItem = document.createElement('option');
         changeItem.setAttribute('value', actionIdx);
@@ -75,7 +80,7 @@ const populateActions = function(refactorable){
         actionSelectionDom.appendChild(changeItem);
     }
 
-    actionSelectionDom.onchange = async function() {
+    actionSelectionDom.onchange = async function () {
         console.log('TODO: undo previous transformation first');
 
         let actionIdx = this.value;
@@ -89,31 +94,31 @@ const populateActions = function(refactorable){
             console.log("Failed transformation:" + JSON.stringify(action));
             throw err;
         }
-        
+
     }
 
 }
 
-const populateWalkThru = function(improvable){
+const populateWalkThru = function (improvable) {
     // populate changes walk through
     let changesWalkThrough = document.getElementById('changesWalkThrough');
     while (changesWalkThrough.firstChild) { //clear
         changesWalkThrough.removeChild(changesWalkThrough.firstChild);
     }
-    
-    if(improvable.transforms.length!=0){
-        let createdBlockActions = improvable.transforms.filter((itm)=>itm.type==='BlockCreateAction')
-        for(var action of createdBlockActions){
+
+    if (improvable.transforms.length != 0) {
+        let createdBlockActions = improvable.transforms.filter((itm) => itm.type === 'BlockCreateAction')
+        for (var action of createdBlockActions) {
             const changeItem = document.createElement('option');
             changeItem.setAttribute('value', action.blockId);
             changeItem.appendChild(
-                document.createTextNode(action.info + ": "+ action.blockId)
+                document.createTextNode(action.info + ": " + action.blockId)
             );
             changesWalkThrough.appendChild(changeItem);
         }
-    }else{
+    } else {
         // in debug/eval mode walkthru smells
-        for(var blockId of improvable.smells){
+        for (var blockId of improvable.smells) {
             const changeItem = document.createElement('option');
             changeItem.setAttribute('value', blockId);
             changeItem.appendChild(
@@ -122,14 +127,14 @@ const populateWalkThru = function(improvable){
             changesWalkThrough.appendChild(changeItem);
         }
     }
-    
 
-    changesWalkThrough.onchange = function() {
+
+    changesWalkThrough.onchange = function () {
         let id = this.value;
         Blockly.getMainWorkspace().centerOnBlock(id);
-        setTimeout(()=>{
-            Blockly.getMainWorkspace().reportValue(id,id);
-        },500)
+        setTimeout(() => {
+            Blockly.getMainWorkspace().reportValue(id, id);
+        }, 500)
     }
 
 };
