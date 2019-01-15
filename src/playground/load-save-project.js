@@ -130,7 +130,9 @@ window.onload = async function () {
     loadProjectAndRunTask({
         providedVM: vm,
         projectId,
-        wsReadyCallback: () => { },
+        wsReadyCallback: () => { 
+            Scratch.workspace.addChangeListener(function(e){console.log(e);});
+        },
         requiredAnalysisUi: false
     });
 };

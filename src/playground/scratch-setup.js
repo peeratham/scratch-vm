@@ -69,6 +69,8 @@ const setupScratch = async function (wsReadyCallback) {
             dragShadowOpacity: 0.6
         }
     });
+
+
     Scratch.workspace = workspace;
 
     //connect workspace to vm
