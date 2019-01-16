@@ -9,8 +9,7 @@ const sendAnalysisRequest = async function ({ projectId, analysisType, evalMode 
         headers: {
             "Content-Type": "text/xml",
             "id": projectId,
-            "type": analysisType,
-            'evalMode': evalMode
+            "type": analysisType
         },
         body: xml,
     }).then(res => res.json());
@@ -18,22 +17,7 @@ const sendAnalysisRequest = async function ({ projectId, analysisType, evalMode 
     return analysisInfo;
 };
 
-const formatResult = function ({ projectId, analysisResult }) {
-    let instanceMap = analysisResult.improvables.reduce((obj, item) => {
-        if (item) { //ignore if undefined (data for the projectId not exists)
-            obj[item.id] = item;
-        }
-        return obj;
-    }, {});
 
-    let result = {
-        _id: projectId,
-        instances: instanceMap,
-        project_metrics: analysisResult.project_metrics,
-        checkSetup: analysisResult.checkSetup
-    };
-    return result;
-}
 
 const getAnalysisInfo = async function ({ projectId, analysisType, evalMode }) {
     let analysisResult = await sendAnalysisRequest({ projectId, analysisType, evalMode });
@@ -41,9 +25,7 @@ const getAnalysisInfo = async function ({ projectId, analysisType, evalMode }) {
         throw analysisResult.error;
     }
 
-    let formatted = formatResult({ projectId, analysisResult });
-    return formatted;
-
+    return analysisResult;    
 }
 
 const getProjectXml = async function (id) {
@@ -65,15 +47,15 @@ const generateInstanceOptionDom = async function (selectionDom, keyValueData, on
     selectionDom.onchange = onOptionChageCallBackCreator(keyValueData, selectionDom);
 };
 
-const populateActions = function (refactorable) {
+const populateActions = async function (actions) {
 
     let actionSelectionDom = document.getElementById('actions');
     while (actionSelectionDom.firstChild) { //clear
         actionSelectionDom.removeChild(actionSelectionDom.firstChild);
     }
 
-    for (let actionIdx = 0; actionIdx < refactorable.transforms.length; actionIdx++) {
-        let action = refactorable.transforms[actionIdx];
+    for (let actionIdx = 0; actionIdx < actions.length; actionIdx++) {
+        let action = actions[actionIdx];
         const changeItem = document.createElement('option');
         changeItem.setAttribute('value', actionIdx);
         changeItem.appendChild(document.createTextNode(action.type));
@@ -84,7 +66,7 @@ const populateActions = function (refactorable) {
         console.log('TODO: undo previous transformation first');
 
         let actionIdx = this.value;
-        let action = refactorable.transforms[actionIdx];
+        let action = actions[actionIdx];
         console.log('TODO: apply transformation actions:' + JSON.stringify(action));
         try {
             await Scratch.workspace.blockTransformer.executeAction(action);
@@ -138,3 +120,68 @@ const populateWalkThru = function (improvable) {
     }
 
 };
+
+function getAllUrlParams(url) {
+
+  // get query string from url (optional) or window
+  var queryString = url ? url.split('?')[1] : window.location.search.slice(1);
+
+  // we'll store the parameters here
+  var obj = {};
+
+  // if query string exists
+  if (queryString) {
+
+    // stuff after # is not part of query string, so get rid of it
+    queryString = queryString.split('#')[0];
+
+    // split our query string into its component parts
+    var arr = queryString.split('&');
+
+    for (var i = 0; i < arr.length; i++) {
+      // separate the keys and the values
+      var a = arr[i].split('=');
+
+      // set parameter name and value (use 'true' if empty)
+      var paramName = a[0];
+      var paramValue = typeof (a[1]) === 'undefined' ? true : a[1];
+
+      // (optional) keep case consistent
+      paramName = paramName.toLowerCase();
+      if (typeof paramValue === 'string') paramValue = paramValue.toLowerCase();
+
+      // if the paramName ends with square brackets, e.g. colors[] or colors[2]
+      if (paramName.match(/\[(\d+)?\]$/)) {
+
+        // create key if it doesn't exist
+        var key = paramName.replace(/\[(\d+)?\]/, '');
+        if (!obj[key]) obj[key] = [];
+
+        // if it's an indexed array e.g. colors[2]
+        if (paramName.match(/\[\d+\]$/)) {
+          // get the index value and add the entry at the appropriate position
+          var index = /\[(\d+)\]/.exec(paramName)[1];
+          obj[key][index] = paramValue;
+        } else {
+          // otherwise add the value to the end of the array
+          obj[key].push(paramValue);
+        }
+      } else {
+        // we're dealing with a string
+        if (!obj[paramName]) {
+          // if it doesn't exist, create property
+          obj[paramName] = paramValue;
+        } else if (obj[paramName] && typeof obj[paramName] === 'string'){
+          // if property does exist and it's a string, convert it to an array
+          obj[paramName] = [obj[paramName]];
+          obj[paramName].push(paramValue);
+        } else {
+          // otherwise add the property
+          obj[paramName].push(paramValue);
+        }
+      }
+    }
+  }
+
+  return obj;
+}

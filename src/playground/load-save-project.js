@@ -1,5 +1,45 @@
 
 var app = angular.module('loadSaveEditorApp', []);
+let autoApply = false;
+
+const getInvariantVar_ = function(stageVarMap){
+    for(let varId of Object.keys(stageVarMap)){
+        if(stageVarMap[varId].name === "invariant"){
+            return stageVarMap[varId];
+        }
+    }
+}
+
+const getInvariantValue = function(){
+    let stageVarMap = Scratch.vm.runtime.getTargetForStage().variables;
+    let invariantVar = getInvariantVar_(stageVarMap);
+    return invariantVar.value;
+}
+
+const runAndRecordValue = async function(){
+    doGreenFlag();
+    await timeout(500);
+    doStopAll();
+    return getInvariantValue();
+}
+
+const undoAll = async function(){
+    while (Scratch.workspace.hasUndoStack()) {
+        await Scratch.workspace.undo();
+        await Blockly.Events.fireNow_();
+    }
+    return;
+}
+
+const recordInstanceStatus = function(selectionDom, itemId, isPassing){
+    const selectItm = document.createElement('option');
+    selectItm.setAttribute('value', itemId);    
+    let color = isPassing? 'green': 'red';
+    selectItm.setAttribute("style", `background-color: ${color};`)
+    selectItm.appendChild(document.createTextNode(itemId));
+
+    selectionDom.appendChild(selectItm);
+}
 
 app.controller('loadSaveEditorController', async function ($scope, $http, $document) {
     $scope.projectIds = ["Empty", "254317821"];
@@ -10,10 +50,15 @@ app.controller('loadSaveEditorController', async function ($scope, $http, $docum
         window.location = window.location.href.replace(window.location.hash, '') + "#" + $scope.selectedProjectId;
     }
 
+    
     let projectId = location.hash.substring(1, location.hash.length);
     $scope._id = projectId;
+    
+    let urlArgs = getAllUrlParams();
+    autoApply = urlArgs['auto'];
+
     $scope.analysisParams = {
-        name: "broad_variable_scope"
+        name: urlArgs['type']
     };
 
     $scope.analyze = async function () {
@@ -22,8 +67,28 @@ app.controller('loadSaveEditorController', async function ($scope, $http, $docum
             projectId, projectXml,
             analysisType: $scope.analysisParams.name, evalMode: false
         });
+
         const instanceSelectionDom = document.getElementById('instances');
-        generateInstanceOptionDom(instanceSelectionDom, analysisInfo['instances'], createOnChangeCallback);
+        Blockly.Events.recordUndo = true;
+        if(autoApply){
+            for(let recordKey of Object.keys(analysisInfo['records'])){
+                let record = analysisInfo['records'][recordKey];
+                await undoAll();
+                let invariantBefore, invariantAfter;
+                invariantBefore = await runAndRecordValue();
+                await applyTransformations(record.refactoring.actions);
+                invariantAfter = await runAndRecordValue();
+                if(invariantBefore===invariantAfter){
+                    recordInstanceStatus(instanceSelectionDom,recordKey, recordKey+": pass");
+                }else{
+                    recordInstanceStatus(instanceSelectionDom,recordKey, recordKey+": failed");
+                }
+                
+            }
+        }else{
+            await generateInstanceOptionDom(instanceSelectionDom, analysisInfo['records'], createOnChangeCallback2); 
+        }
+        
     };
 
     $scope.keyboard = {
@@ -73,10 +138,25 @@ const selectNextInstance = function (instanceSelectionDom) {
     }
 }
 
-const createOnChangeCallback = function (refactorableData, instanceSelectionDom) {
+const createOnChangeCallback2 = function (refactorableData, instanceSelectionDom) {
     return async () => {
-        let refactorable = refactorableData[instanceSelectionDom.value];
-        populateActions(refactorable);
+        //clean up
+        while (Scratch.workspace.hasUndoStack()) {
+            await Scratch.workspace.undo();
+            await Blockly.Events.fireNow_();
+        }
+
+        let analysisResult = refactorableData[instanceSelectionDom.value];
+        await populateActions(analysisResult.refactoring.actions);
+        let actionSelectionDom = document.getElementById('actions');
+        if(autoApply){
+            //apply transformation automatically
+            for (let i = 0; i < actionSelectionDom.length; i++) {
+                actionSelectionDom.selectedIndex = i;
+                actionSelectionDom.dispatchEvent(new Event('change'));
+            }
+        }
+        
     };
 };
 
@@ -116,7 +196,9 @@ const createUploadTask = function (projectId, callback) {
     };
 }
 
-
+function timeout(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 window.onload = async function () {
     const projectIdTextInput = document.getElementById("projectId");
@@ -131,7 +213,7 @@ window.onload = async function () {
         providedVM: vm,
         projectId,
         wsReadyCallback: () => { 
-            Scratch.workspace.addChangeListener(function(e){console.log(e);});
+//             Scratch.workspace.addChangeListener(function(e){console.log(e);});
         },
         requiredAnalysisUi: false
     });
@@ -149,15 +231,21 @@ saveButton.addEventListener("click", function () {
 
 
 const greenFlagButton = document.getElementById("greenFlag");
-greenFlagButton.addEventListener("click", function () {
+const doGreenFlag = function(){
     Scratch.vm.start();
     Scratch.vm.greenFlag();
+}
+greenFlagButton.addEventListener("click", function () {
+    doGreenFlag();
 });
 
 const stopAllButton = document.getElementById("stopAll");
-stopAllButton.addEventListener("click", function () {
+const doStopAll = function(){
     Scratch.vm.stopAll();
     clearTimeout(Scratch.vm.runtime._steppingInterval);
+}
+stopAllButton.addEventListener("click", function () {
+    doStopAll();
 });
 
 const addTargetButton = document.getElementById("addTargetButton");

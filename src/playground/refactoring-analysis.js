@@ -81,7 +81,6 @@ const createAnalysisTask = function (vm, projectId, callback) {
 }
 
 const applyTransformations = async function(transforms, report) {
-    console.log('TODO: do not record transforms data on invariant insertion');
     Blockly.Events.recordUndo = true;
     //START timer
     const t0 = performance.now();
